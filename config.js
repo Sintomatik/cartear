@@ -14,23 +14,23 @@ const CARD_CONFIG = {
     // PERSONAL INFORMATION (Customize these!)
     // ==========================================
     personalInfo: {
-        name: "YOUR NAME HERE",              // Your full name
-        title: "Your Job Title",              // Your profession/title
-        company: "Company Name",              // Your company/school
-        email: "email@example.com",           // Your email
-        phone: "+1 234 567 8900",             // Your phone number
-        website: "www.yourwebsite.com",       // Your website
-        location: "City, Country",            // Your location
+        name: "ANTHONY MURACCIOLI",              // Your full name
+        title: "MMI 3",              // Your profession/title
+        company: "IUT de Corte",              // Your company/school
+        email: "muraccioli.anthony@gmail.com",           // Your email
+        phone: "+33 6 76 82 23 75",             // Your phone number
+        website: "www.darymura.com",       // Your website
+        location: "Calenzana, Corse",            // Your location
     },
 
     // ==========================================
     // SOCIAL MEDIA LINKS (Customize these!)
     // ==========================================
     socialLinks: {
-        linkedin: "https://linkedin.com/in/yourprofile",
-        github: "https://github.com/yourusername",
-        twitter: "https://twitter.com/yourhandle",
-        portfolio: "https://yourportfolio.com",
+        linkedin: "#",
+        github: "#",
+        twitter: "#",
+        portfolio: "https://darymura.com",
     },
 
     // ==========================================
