@@ -213,15 +213,25 @@ function createFrontContent() {
         frontGroup.add(photoBorder);
     }
 
-    // Name text
-    const nameMesh = createTextMesh(config.name, {
+    // First name text
+    const firstNameMesh = createTextMesh(config.firstName, {
         fontSize: 48,
         fontWeight: 'bold',
         color: '#ffffff'
     });
-    nameMesh.position.set(1, 1.5, 0.01);
-    nameMesh.scale.set(1.1, 1.1, 1);
-    frontGroup.add(nameMesh);
+    firstNameMesh.position.set(1, 1.8, 0.01);
+    firstNameMesh.scale.set(1.1, 1.1, 1);
+    frontGroup.add(firstNameMesh);
+
+    // Surname text
+    const surnameMesh = createTextMesh(config.surname, {
+        fontSize: 48,
+        fontWeight: 'bold',
+        color: '#ffffff'
+    });
+    surnameMesh.position.set(1, 1.2, 0.01);
+    surnameMesh.scale.set(1.1, 1.1, 1);
+    frontGroup.add(surnameMesh);
 
     // Title text
     const titleMesh = createTextMesh(config.title, {

@@ -14,7 +14,8 @@ const CARD_CONFIG = {
     // PERSONAL INFORMATION (Customize these!)
     // ==========================================
     personalInfo: {
-        name: "ANTHONY MURACCIOLI",              // Your full name
+        firstName: "ANTHONY",                    // Your first name
+        surname: "MURACCIOLI",                   // Your surname
         title: "MMI 3",              // Your profession/title
         company: "IUT de Corte",              // Your company/school
         email: "muraccioli.anthony@gmail.com",           // Your email
