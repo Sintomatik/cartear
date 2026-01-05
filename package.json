@@ -1,0 +1,16 @@
+{
+  "name": "carte-visite-ar",
+  "version": "1.0.0",
+  "description": "An interactive 3D business card with AR capabilities built using Three.js for educational purposes.",
+  "main": "card.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "node-forge": "^1.3.3"
+  }
+}

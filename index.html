@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR Business Card</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        #info-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 15px;
+            color: white;
+            z-index: 100;
+            max-width: 300px;
+        }
+
+        #info-panel h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+            color: #00d4ff;
+        }
+
+        #info-panel p {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            line-height: 1.5;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 10px;
+            z-index: 100;
+            width: 90%;
+            max-width: 400px;
+            padding: 10px;
+        }
+
+        .control-btn {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 20px;
+            background: linear-gradient(135deg, #00d4ff, #0099cc);
+            color: white;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+            white-space: nowrap;
+            flex: 0 1 auto;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0, 212, 255, 0.5);
+        }
+
+        /* Mobile responsive */
+        @media (max-width: 600px) {
+            #info-panel {
+                display: none;
+            }
+            
+            #controls {
+                bottom: 10px;
+                gap: 8px;
+                width: 95%;
+                padding: 5px;
+            }
+            
+            .control-btn {
+                padding: 8px 12px;
+                font-size: 0.7rem;
+                border-radius: 15px;
+            }
+            
+            #ar-status {
+                top: 10px;
+                right: 10px;
+                padding: 6px 12px;
+                font-size: 0.7rem;
+            }
+        }
+
+        /* AR Mode - minimal UI */
+        body.ar-active #controls {
+            position: fixed !important;
+            bottom: 20px !important;
+            left: auto !important;
+            right: 20px !important;
+            top: auto !important;
+            transform: none !important;
+            width: auto !important;
+            max-width: 120px !important;
+            flex-direction: column !important;
+            gap: 8px !important;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 10px !important;
+        }
+        
+        body.ar-active .control-btn {
+            padding: 10px 14px !important;
+            font-size: 0.75rem !important;
+            width: 100% !important;
+        }
+        
+        body.ar-active #btn-rotate,
+        body.ar-active #btn-reset {
+            display: none !important;
+        }
+        
+        body.ar-active #info-panel,
+        body.ar-active #ar-status {
+            display: none !important;
+        }
+
+        #loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a2e;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 0.5s ease;
+        }
+
+        #loading.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #ar-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid #00d4ff;
+            border-radius: 20px;
+            color: #00d4ff;
+            font-size: 0.8rem;
+            z-index: 100;
+        }
+
+        /* Tooltip for interactive elements */
+        #tooltip {
+            position: fixed;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 200;
+        }
+
+        #tooltip.visible {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="loading">
+        <div class="loader"></div>
+    </div>
+
+    <div id="canvas-container"></div>
+
+    <div id="info-panel">
+        <h1>🎴 AR Business Card</h1>
+        <p>Interact with the 3D card! Click on elements to see more information. Use mouse to rotate and zoom.</p>
+    </div>
+
+    <div id="ar-status">AR Mode Ready</div>
+
+    <div id="controls">
+        <button class="control-btn" id="btn-rotate">Auto Rotate</button>
+        <button class="control-btn" id="btn-flip">Flip Card</button>
+        <button class="control-btn" id="btn-reset">Reset View</button>
+        <button class="control-btn" id="btn-ar">Enter AR</button>
+    </div>
+
+    <div id="tooltip"></div>
+
+    <!-- Three.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <!-- Font Loader -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <!-- Text Geometry -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    
+    <script src="config.js"></script>
+    <script src="card.js"></script>
+</body>
+</html>
