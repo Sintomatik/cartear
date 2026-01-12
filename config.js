@@ -64,7 +64,7 @@ const CARD_CONFIG = {
             enabled: true,
             placeholder: false,  // Set to false when you add real image
             imageUrl: "./img/logo.png",       // Add your image URL here
-            size: 1.8,
+            size: 1.6,
         },
 
         // 3D decorative elements
