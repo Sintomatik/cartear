@@ -97,6 +97,9 @@
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <script>
+        // Store reference for global access
+        let videoMaterialComponent = null;
+        
         // Custom component to handle video texture
         AFRAME.registerComponent('video-material', {
             schema: {
@@ -108,26 +111,71 @@
                 const data = this.data;
                 const self = this;
                 
+                videoMaterialComponent = this;
+                
                 // Create video element
                 const video = document.createElement('video');
                 video.src = data.src;
                 video.loop = true;
-                video.muted = true;
+                video.muted = true; // Must be muted for autoplay
                 video.playsInline = true;
                 video.crossOrigin = 'anonymous';
                 video.setAttribute('webkit-playsinline', 'true');
-                video.style.display = 'none';
+                video.setAttribute('playsinline', '');
+                video.preload = 'auto';
+                video.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
                 document.body.appendChild(video);
                 
                 this.video = video;
                 this.textureApplied = false;
+                this.videoReady = false;
                 
-                // Create texture immediately
+                // Wait for video metadata before creating texture
+                video.addEventListener('loadedmetadata', () => {
+                    console.log('Video metadata loaded:', video.videoWidth, 'x', video.videoHeight);
+                });
+                
+                video.addEventListener('loadeddata', () => {
+                    console.log('Video data loaded, readyState:', video.readyState);
+                    self.videoReady = true;
+                    self.createTextureAndMaterial();
+                    self.tryPlay();
+                });
+                
+                video.addEventListener('canplay', () => {
+                    console.log('Video can play');
+                    self.tryPlay();
+                });
+                
+                video.addEventListener('playing', () => {
+                    console.log('Video is now playing');
+                });
+                
+                video.addEventListener('error', (e) => {
+                    console.error('Video error:', video.error);
+                });
+                
+                // Start loading
+                video.load();
+                
+                // Apply when mesh is ready
+                el.addEventListener('object3dset', () => {
+                    self.applyMaterial();
+                });
+            },
+            createTextureAndMaterial: function() {
+                if (this.texture) return;
+                
+                const video = this.video;
+                const data = this.data;
+                
+                // Create texture
                 const texture = new THREE.VideoTexture(video);
                 texture.minFilter = THREE.LinearFilter;
                 texture.magFilter = THREE.LinearFilter;
-                texture.format = THREE.RGBFormat;
+                texture.format = THREE.RGBAFormat;
                 texture.generateMipmaps = false;
+                texture.needsUpdate = true;
                 this.texture = texture;
                 
                 // Create material
@@ -135,46 +183,41 @@
                     map: texture,
                     transparent: true,
                     opacity: data.opacity,
-                    side: THREE.DoubleSide
+                    side: THREE.DoubleSide,
+                    toneMapped: false
                 });
                 
-                // Apply when mesh is ready
-                el.addEventListener('object3dset', () => {
-                    self.applyMaterial();
-                });
-                
-                // Also try to apply after a short delay
-                setTimeout(() => {
-                    self.applyMaterial();
-                }, 100);
-                
-                // Load and play video
-                video.load();
-                video.addEventListener('canplaythrough', () => {
-                    console.log('Video can play through');
-                    video.play().catch(e => console.warn('Video play failed:', e));
-                });
+                console.log('Texture and material created');
+                this.applyMaterial();
             },
             applyMaterial: function() {
-                if (this.textureApplied) return;
+                if (this.textureApplied || !this.material) return;
                 
                 const mesh = this.el.getObject3D('mesh');
-                if (mesh && this.material) {
+                if (mesh) {
                     mesh.material = this.material;
                     this.textureApplied = true;
                     console.log('Video material applied to mesh');
                 }
             },
+            tryPlay: function() {
+                const video = this.video;
+                if (video && video.paused && video.readyState >= 2) {
+                    video.play().then(() => {
+                        console.log('Video started playing');
+                    }).catch(e => {
+                        console.warn('Auto-play blocked, waiting for user interaction:', e.message);
+                    });
+                }
+            },
             tick: function() {
-                // Keep texture updated
-                if (this.texture && this.video && !this.video.paused) {
+                // Keep texture updated every frame
+                if (this.texture && this.video && this.video.readyState >= 2) {
                     this.texture.needsUpdate = true;
                 }
             },
             play: function() {
-                if (this.video) {
-                    this.video.play().catch(e => console.warn('Video play failed:', e));
-                }
+                this.tryPlay();
             },
             pause: function() {
                 if (this.video) {
@@ -187,6 +230,18 @@
                 }
             }
         });
+        
+        // Start video on any user interaction (needed for mobile browsers)
+        function startVideoOnInteraction() {
+            if (videoMaterialComponent && videoMaterialComponent.video) {
+                videoMaterialComponent.video.play().catch(e => console.warn('Play failed:', e));
+            }
+            // Remove listeners after first interaction
+            document.removeEventListener('click', startVideoOnInteraction);
+            document.removeEventListener('touchstart', startVideoOnInteraction);
+        }
+        document.addEventListener('click', startVideoOnInteraction);
+        document.addEventListener('touchstart', startVideoOnInteraction);
     </script>
 </head>
 <body>
