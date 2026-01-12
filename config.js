@@ -20,7 +20,7 @@ const CARD_CONFIG = {
         company: "IUT de Corte",              // Your company/school
         email: "muraccioli.anthony@gmail.com",           // Your email
         phone: "+33 6 76 82 23 75",             // Your phone number
-        website: "www.darymura.com",       // Your website
+        website: "www.darymura.net",       // Your website
         location: "Calenzana, Corse",            // Your location
     },
 
