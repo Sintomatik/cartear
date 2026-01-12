@@ -62,7 +62,7 @@ const CARD_CONFIG = {
         // Profile photo placeholder
         profilePhoto: {
             enabled: true,
-            placeholder: true,  // Set to false when you add real image
+            placeholder: false,  // Set to false when you add real image
             imageUrl: "./img/logo.png",       // Add your image URL here
             size: 1.5,
         },
