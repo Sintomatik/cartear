@@ -18,7 +18,6 @@
             height: 100%;
             overflow: hidden;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: #000;
         }
 
         #controls {
@@ -99,14 +98,71 @@
     </style>
 </head>
 <body>
+    <a-scene
+        mindar-image="imageTargetSrc: ./markers/target.mind; autoStart: true; uiLoading: #loading; uiScanning: no; uiError: no;"
+        color-space="sRGB"
+        renderer="colorManagement: true; antialias: true;"
+        vr-mode-ui="enabled: false"
+        device-orientation-permission-ui="enabled: false">
+        
+        <a-assets>
+            <img id="card-front-img" crossorigin="anonymous">
+            <img id="card-back-img" crossorigin="anonymous">
+        </a-assets>
+        
+        <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+        
+        <a-entity mindar-image-target="targetIndex: 0" id="card-target">
+            <a-entity id="card-group" position="0 0 0.1">
+                <a-plane 
+                    id="card-front"
+                    position="0 0 0.01"
+                    width="1"
+                    height="0.625"
+                    material="shader: flat; side: double; transparent: true;">
+                </a-plane>
+                
+                <a-plane 
+                    id="card-back"
+                    position="0 0 -0.01"
+                    rotation="0 180 0"
+                    width="1"
+                    height="0.625"
+                    material="shader: flat; side: double; transparent: true;">
+                </a-plane>
+            </a-entity>
+            
+            <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+        </a-entity>
+    </a-scene>
+
+    <div id="loading" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #1a1a2e; display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 9999; transition: opacity 0.5s;">
+        <div style="width: 50px; height: 50px; border: 3px solid rgba(255,255,255,0.1); border-top-color: #00d4ff; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+        <p style="color: #00d4ff; margin-top: 20px;">Initializing AR Camera...</p>
+        <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+    </div>
+
+    <div id="info-overlay">
+        <h2>📷 Marker AR Mode</h2>
+        <p>Point your camera at the marker image to see the AR business card appear!</p>
+    </div>
+
+    <div id="scanning-hint">
+        <div class="icon">🎯</div>
+        <p>Scanning for marker...<br>Point camera at the target image</p>
+    </div>
+
+    <div id="controls">
+        <button class="control-btn" id="btn-flip">Flip Card</button>
+        <button class="control-btn" id="btn-back">← Back</button>
+    </div>
+
     <script src="config.js"></script>
     <script>
         // Get config values
-        const markerFile = (typeof CARD_CONFIG !== 'undefined' && CARD_CONFIG.markerAR?.markerFile) 
-            || './markers/target.mind';
         const personalConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.personalInfo : {};
 
-        // Create card canvas textures
+        // Create card canvas texture
         function createCardCanvas(side) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
@@ -127,24 +183,20 @@
             ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
             if (side === 'front') {
-                // Name
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 48px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText(personalConfig.firstName || 'FIRST', canvas.width / 2, 120);
                 ctx.fillText(personalConfig.surname || 'SURNAME', canvas.width / 2, 180);
 
-                // Title
                 ctx.fillStyle = '#00d4ff';
                 ctx.font = '28px Segoe UI, Arial, sans-serif';
                 ctx.fillText(personalConfig.title || 'Title', canvas.width / 2, 240);
 
-                // Company
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = '24px Segoe UI, Arial, sans-serif';
                 ctx.fillText(personalConfig.company || 'Company', canvas.width / 2, 280);
 
-                // Divider
                 ctx.strokeStyle = '#00d4ff';
                 ctx.lineWidth = 1;
                 ctx.globalAlpha = 0.5;
@@ -154,32 +206,26 @@
                 ctx.stroke();
                 ctx.globalAlpha = 1;
 
-                // Contact info
                 ctx.fillStyle = '#cccccc';
                 ctx.font = '20px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'left';
                 ctx.fillText('📧  ' + (personalConfig.email || 'email@example.com'), 100, 360);
                 ctx.fillText('📱  ' + (personalConfig.phone || '+1 234 567 890'), 100, 400);
                 ctx.fillText('🌐  ' + (personalConfig.website || 'www.example.com'), 100, 440);
-
             } else {
-                // Back side
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 36px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.fillText('CONNECT WITH ME', canvas.width / 2, 150);
 
-                // Social icons
                 ctx.fillStyle = '#00d4ff';
                 ctx.font = '60px Arial';
                 ctx.fillText('💼  🐙  🐦', canvas.width / 2, 260);
 
-                // Location
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = '24px Segoe UI, Arial, sans-serif';
                 ctx.fillText('📍 ' + (personalConfig.location || 'Location'), canvas.width / 2, 350);
 
-                // Hint
                 ctx.fillStyle = '#555555';
                 ctx.font = '16px Segoe UI, Arial, sans-serif';
                 ctx.fillText('Scan the marker to view this card in AR!', canvas.width / 2, 440);
@@ -188,113 +234,81 @@
             return canvas;
         }
 
-        // Create textures as data URLs
-        const frontTextureURL = createCardCanvas('front').toDataURL();
-        const backTextureURL = createCardCanvas('back').toDataURL();
-
-        // Write the full page HTML including A-Frame scene
-        document.write(`
-            <a-scene
-                mindar-image="imageTargetSrc: ${markerFile}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
-                color-space="sRGB"
-                renderer="colorManagement: true; antialias: true;"
-                vr-mode-ui="enabled: false"
-                device-orientation-permission-ui="enabled: false"
-                style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+        // Wait for scene to load
+        const scene = document.querySelector('a-scene');
+        
+        // Hide loading when AR is ready
+        scene.addEventListener('arReady', () => {
+            console.log('AR Ready');
+            const loading = document.getElementById('loading');
+            loading.style.opacity = '0';
+            setTimeout(() => { loading.style.display = 'none'; }, 500);
+        });
+        
+        scene.addEventListener('loaded', () => {
+            console.log('Scene loaded');
+            
+            // Create and apply textures
+            const frontCanvas = createCardCanvas('front');
+            const backCanvas = createCardCanvas('back');
+            
+            document.getElementById('card-front-img').src = frontCanvas.toDataURL();
+            document.getElementById('card-back-img').src = backCanvas.toDataURL();
+            
+            // Apply to planes
+            setTimeout(() => {
+                const frontPlane = document.getElementById('card-front');
+                const backPlane = document.getElementById('card-back');
                 
-                <a-assets>
-                    <img id="card-front-img" src="${frontTextureURL}">
-                    <img id="card-back-img" src="${backTextureURL}">
-                </a-assets>
-                
-                <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-                
-                <a-entity mindar-image-target="targetIndex: 0" id="card-target">
-                    <a-entity id="card-group" position="0 0 0.1" scale="1 1 1">
-                        <a-plane 
-                            id="card-front"
-                            position="0 0 0.01"
-                            width="1"
-                            height="0.625"
-                            src="#card-front-img"
-                            material="shader: flat; side: double; transparent: true;">
-                        </a-plane>
-                        
-                        <a-plane 
-                            id="card-back"
-                            position="0 0 -0.01"
-                            rotation="0 180 0"
-                            width="1"
-                            height="0.625"
-                            src="#card-back-img"
-                            material="shader: flat; side: double; transparent: true;">
-                        </a-plane>
-                    </a-entity>
-                    
-                    <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
-                </a-entity>
-            </a-scene>
+                if (frontPlane) {
+                    frontPlane.setAttribute('src', '#card-front-img');
+                }
+                if (backPlane) {
+                    backPlane.setAttribute('src', '#card-back-img');
+                }
+            }, 500);
+            
+            // Fallback: hide loading after 3 seconds anyway
+            setTimeout(() => {
+                const loading = document.getElementById('loading');
+                if (loading && loading.style.display !== 'none') {
+                    loading.style.opacity = '0';
+                    setTimeout(() => { loading.style.display = 'none'; }, 500);
+                }
+            }, 3000);
+        });
 
-            <div id="info-overlay">
-                <h2>📷 Marker AR Mode</h2>
-                <p>Point your camera at the marker image to see the AR business card appear!</p>
-            </div>
+        // Target tracking
+        const target = document.getElementById('card-target');
+        if (target) {
+            target.addEventListener('targetFound', () => {
+                console.log('Target found!');
+                document.getElementById('scanning-hint').classList.add('hidden');
+            });
+            target.addEventListener('targetLost', () => {
+                console.log('Target lost');
+                document.getElementById('scanning-hint').classList.remove('hidden');
+            });
+        }
 
-            <div id="scanning-hint">
-                <div class="icon">🎯</div>
-                <p>Scanning for marker...<br>Point camera at the target image</p>
-            </div>
+        // Flip card
+        let isFlipped = false;
+        document.getElementById('btn-flip').addEventListener('click', () => {
+            const cardGroup = document.getElementById('card-group');
+            if (!cardGroup) return;
+            
+            isFlipped = !isFlipped;
+            cardGroup.setAttribute('animation', {
+                property: 'rotation',
+                to: `0 ${isFlipped ? 180 : 0} 0`,
+                dur: 500,
+                easing: 'easeOutCubic'
+            });
+        });
 
-            <div id="controls">
-                <button class="control-btn" id="btn-flip">Flip Card</button>
-                <button class="control-btn" id="btn-back">← Back</button>
-            </div>
-        `);
-
-        // Setup event listeners after DOM is ready
-        window.addEventListener('load', () => {
-            // Setup target tracking events
-            const target = document.querySelector('#card-target');
-            if (target) {
-                target.addEventListener('targetFound', () => {
-                    console.log('Target found!');
-                    const hint = document.getElementById('scanning-hint');
-                    if (hint) hint.classList.add('hidden');
-                });
-                target.addEventListener('targetLost', () => {
-                    console.log('Target lost');
-                    const hint = document.getElementById('scanning-hint');
-                    if (hint) hint.classList.remove('hidden');
-                });
-            }
-
-            // Flip card functionality
-            let isFlipped = false;
-            const flipBtn = document.getElementById('btn-flip');
-            if (flipBtn) {
-                flipBtn.addEventListener('click', () => {
-                    const cardGroup = document.querySelector('#card-group');
-                    if (!cardGroup) return;
-                    
-                    isFlipped = !isFlipped;
-                    const targetRotation = isFlipped ? 180 : 0;
-                    
-                    cardGroup.setAttribute('animation', {
-                        property: 'rotation',
-                        to: `0 ${targetRotation} 0`,
-                        dur: 500,
-                        easing: 'easeOutCubic'
-                    });
-                });
-            }
-
-            // Back button
-            const backBtn = document.getElementById('btn-back');
-            if (backBtn) {
-                backBtn.addEventListener('click', () => {
-                    window.location.href = 'index.html';
-                });
-            }
+        // Back button
+        document.getElementById('btn-back').addEventListener('click', () => {
+            window.location.href = 'index.html';
         });
     </script>
 </body>
