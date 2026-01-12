@@ -18,6 +18,12 @@ let particleSystem;
 let xrHitTestSource = null;
 let reticle = null;
 
+// AR Media variables
+let arVideoMesh = null;
+let arVideoElement = null;
+let arAudioListener = null;
+let arPositionalAudio = null;
+
 // Initialize the application
 function init() {
     // Create scene
@@ -64,6 +70,10 @@ function init() {
 
     // Create the business card
     createBusinessCard();
+
+    // Create AR media (video background and spatial audio)
+    createARVideoBackground();
+    createARSpatialAudio();
 
     // Add particle effects
     if (CARD_CONFIG.interactiveElements.decorations.particles) {
@@ -362,7 +372,7 @@ function createSocialIcons(parent) {
         const iconGroup = new THREE.Group();
         
         // Icon background
-        const bgGeometry = new THREE.CircleGeometry(0.5, 32);
+        const bgGeometry = new THREE.CircleGeometry(0.35, 32);
         const bgMaterial = new THREE.MeshBasicMaterial({ 
             color: icon.color,
             transparent: true,
@@ -779,6 +789,134 @@ function resetView() {
 
 let currentXRSession = null;
 
+// Create AR video background with faded edges
+function createARVideoBackground() {
+    const mediaConfig = CARD_CONFIG.arMedia;
+    if (!mediaConfig || !mediaConfig.video || !mediaConfig.video.enabled) return;
+    
+    // Create video element
+    arVideoElement = document.createElement('video');
+    arVideoElement.src = mediaConfig.video.src;
+    arVideoElement.loop = mediaConfig.video.loop !== false;
+    arVideoElement.muted = true; // Muted to allow autoplay
+    arVideoElement.playsInline = true;
+    arVideoElement.crossOrigin = 'anonymous';
+    
+    // Create video texture
+    const videoTexture = new THREE.VideoTexture(arVideoElement);
+    videoTexture.minFilter = THREE.LinearFilter;
+    videoTexture.magFilter = THREE.LinearFilter;
+    
+    // Shader material with faded edges
+    const videoMaterial = new THREE.ShaderMaterial({
+        uniforms: {
+            videoTexture: { value: videoTexture },
+            opacity: { value: mediaConfig.video.opacity || 0.8 },
+            fadeEdges: { value: mediaConfig.video.fadeEdges ? 1.0 : 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform sampler2D videoTexture;
+            uniform float opacity;
+            uniform float fadeEdges;
+            varying vec2 vUv;
+            
+            void main() {
+                vec4 texColor = texture2D(videoTexture, vUv);
+                
+                // Calculate edge fade
+                float edgeFade = 1.0;
+                if (fadeEdges > 0.5) {
+                    vec2 center = vUv - 0.5;
+                    float dist = length(center) * 1.5;
+                    edgeFade = 1.0 - smoothstep(0.3, 0.8, dist);
+                }
+                
+                gl_FragColor = vec4(texColor.rgb, texColor.a * opacity * edgeFade);
+            }
+        `,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    
+    // Create plane geometry
+    const width = mediaConfig.video.width || 3;
+    const height = mediaConfig.video.height || 2;
+    const geometry = new THREE.PlaneGeometry(width, height);
+    
+    arVideoMesh = new THREE.Mesh(geometry, videoMaterial);
+    arVideoMesh.position.set(0, 0, -0.5); // Behind the card
+    arVideoMesh.visible = false;
+    
+    cardGroup.add(arVideoMesh);
+}
+
+// Create spatial audio positioned at the card
+function createARSpatialAudio() {
+    const mediaConfig = CARD_CONFIG.arMedia;
+    if (!mediaConfig || !mediaConfig.audio || !mediaConfig.audio.enabled) return;
+    
+    // Create audio listener and attach to camera
+    arAudioListener = new THREE.AudioListener();
+    camera.add(arAudioListener);
+    
+    // Create positional audio
+    arPositionalAudio = new THREE.PositionalAudio(arAudioListener);
+    
+    // Load audio
+    const audioLoader = new THREE.AudioLoader();
+    audioLoader.load(mediaConfig.audio.src, (buffer) => {
+        arPositionalAudio.setBuffer(buffer);
+        arPositionalAudio.setLoop(mediaConfig.audio.loop !== false);
+        arPositionalAudio.setVolume(mediaConfig.audio.volume || 0.5);
+        arPositionalAudio.setRefDistance(mediaConfig.audio.refDistance || 1);
+        arPositionalAudio.setRolloffFactor(mediaConfig.audio.rolloffFactor || 1);
+    }, undefined, (error) => {
+        console.warn('Failed to load AR audio:', error);
+    });
+    
+    // Add to card group so it moves with the card
+    cardGroup.add(arPositionalAudio);
+}
+
+// Start AR media playback
+function startARMedia() {
+    // Start video
+    if (arVideoElement && arVideoMesh) {
+        arVideoMesh.visible = true;
+        arVideoElement.play().catch(e => console.warn('Video autoplay failed:', e));
+    }
+    
+    // Start audio (requires user interaction)
+    if (arPositionalAudio && arPositionalAudio.buffer && !arPositionalAudio.isPlaying) {
+        arPositionalAudio.play();
+    }
+}
+
+// Stop AR media playback
+function stopARMedia() {
+    // Stop video
+    if (arVideoElement) {
+        arVideoElement.pause();
+        arVideoElement.currentTime = 0;
+    }
+    if (arVideoMesh) {
+        arVideoMesh.visible = false;
+    }
+    
+    // Stop audio
+    if (arPositionalAudio && arPositionalAudio.isPlaying) {
+        arPositionalAudio.stop();
+    }
+}
+
 function toggleARMode() {
     const status = document.getElementById('ar-status');
     
@@ -845,6 +983,9 @@ async function startARSession() {
         cardGroup.scale.set(0.25, 0.25, 0.25);
         cardGroup.position.set(0, 0.1, -2.0);
         
+        // Start AR media (video background and spatial audio)
+        startARMedia();
+        
         // Disable orbit controls in AR
         controls.enabled = false;
         
@@ -856,6 +997,9 @@ async function startARSession() {
         session.addEventListener('end', () => {
             currentXRSession = null;
             isInAR = false;
+            
+            // Stop AR media
+            stopARMedia();
             
             // Remove AR active class
             document.body.classList.remove('ar-active');

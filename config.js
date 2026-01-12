@@ -76,6 +76,29 @@ const CARD_CONFIG = {
     },
 
     // ==========================================
+    // AR MEDIA (Video background & Spatial Audio)
+    // ==========================================
+    arMedia: {
+        video: {
+            enabled: true,
+            src: "./media/sky.mp4",           // Path to your background video
+            width: 3,                          // Video plane width (relative to card)
+            height: 2,                         // Video plane height
+            opacity: 0.8,                      // Overall opacity
+            fadeEdges: true,                   // Fade edges of video
+            loop: true,                        // Loop the video
+        },
+        audio: {
+            enabled: true,
+            src: "./media/music.mp3",          // Path to your spatial audio
+            volume: 0.5,                       // Volume (0-1)
+            loop: true,                        // Loop the audio
+            refDistance: 1,                    // Distance at which volume is 100%
+            rolloffFactor: 1,                  // How quickly volume decreases with distance
+        }
+    },
+
+    // ==========================================
     // MARKER AR SETTINGS (MindAR)
     // ==========================================
     markerAR: {
@@ -101,11 +124,11 @@ const CARD_CONFIG = {
     // SKILLS / EXPERTISE (Back of card)
     // ==========================================
     skills: [
-        "Skill 1",
-        "Skill 2", 
-        "Skill 3",
-        "Skill 4",
-        "Skill 5",
+        "Dev Web & Database",
+        "Design Graphique",
+        "SEO",
+        "Marketing Digital",
+        "Gestion de Projet",
     ],
 
     // ==========================================

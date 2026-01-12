@@ -108,11 +108,22 @@
         <a-assets>
             <img id="card-front-img" crossorigin="anonymous">
             <img id="card-back-img" crossorigin="anonymous">
+            <video id="bg-video" autoplay loop muted playsinline crossorigin="anonymous"></video>
         </a-assets>
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
         <a-entity mindar-image-target="targetIndex: 0" id="card-target">
+            <!-- Video background behind card -->
+            <a-entity id="video-bg-entity" position="0 0 -0.1" visible="false">
+                <a-plane 
+                    id="video-bg-plane"
+                    width="2.5"
+                    height="1.5"
+                    material="shader: flat; side: double; transparent: true; opacity: 0.8;">
+                </a-plane>
+            </a-entity>
+            
             <a-entity id="card-group" position="0 0 0.1">
                 <a-plane 
                     id="card-front"
@@ -131,6 +142,9 @@
                     material="shader: flat; side: double; transparent: true;">
                 </a-plane>
             </a-entity>
+            
+            <!-- Spatial audio positioned at the card -->
+            <a-entity id="spatial-audio" position="0 0 0"></a-entity>
             
             <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
         </a-entity>
@@ -157,6 +171,9 @@
         <button class="control-btn" id="btn-back">← Back</button>
     </div>
 
+    <!-- Hidden audio element for spatial audio -->
+    <audio id="spatial-audio-element" loop style="display: none;"></audio>
+
     <script src="config.js"></script>
     <script>
         // Get config values
@@ -164,6 +181,7 @@
         const profileConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.interactiveElements?.profilePhoto : {};
         const skillsConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.skills : [];
         const additionalInfo = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.additionalInfo : {};
+        const arMediaConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.arMedia : {};
 
         // Load profile image
         let profileImage = null;
@@ -171,6 +189,134 @@
             profileImage = new Image();
             profileImage.crossOrigin = 'anonymous';
             profileImage.src = profileConfig.imageUrl;
+        }
+
+        // Audio context for spatial audio
+        let audioContext = null;
+        let audioSource = null;
+        let pannerNode = null;
+        let gainNode = null;
+        let isAudioPlaying = false;
+
+        // Setup spatial audio
+        function setupSpatialAudio() {
+            if (!arMediaConfig.audio || !arMediaConfig.audio.enabled) return;
+            
+            const audioEl = document.getElementById('spatial-audio-element');
+            if (audioEl && arMediaConfig.audio.src) {
+                audioEl.src = arMediaConfig.audio.src;
+                audioEl.volume = arMediaConfig.audio.volume || 0.5;
+            }
+        }
+
+        // Start spatial audio with Web Audio API for 3D positioning
+        function startSpatialAudio() {
+            if (!arMediaConfig.audio || !arMediaConfig.audio.enabled || isAudioPlaying) return;
+            
+            const audioEl = document.getElementById('spatial-audio-element');
+            if (!audioEl || !audioEl.src) return;
+            
+            try {
+                // Create audio context if not exists
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    audioSource = audioContext.createMediaElementSource(audioEl);
+                    
+                    // Create panner for 3D audio positioning
+                    pannerNode = audioContext.createPanner();
+                    pannerNode.panningModel = 'HRTF';
+                    pannerNode.distanceModel = 'inverse';
+                    pannerNode.refDistance = arMediaConfig.audio.refDistance || 1;
+                    pannerNode.rolloffFactor = arMediaConfig.audio.rolloffFactor || 1;
+                    pannerNode.setPosition(0, 0, -1); // Position at card
+                    
+                    // Create gain node for volume control
+                    gainNode = audioContext.createGain();
+                    gainNode.gain.value = arMediaConfig.audio.volume || 0.5;
+                    
+                    // Connect nodes
+                    audioSource.connect(pannerNode);
+                    pannerNode.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                }
+                
+                // Resume context if suspended
+                if (audioContext.state === 'suspended') {
+                    audioContext.resume();
+                }
+                
+                audioEl.play().then(() => {
+                    isAudioPlaying = true;
+                    console.log('Spatial audio started');
+                }).catch(e => console.warn('Audio play failed:', e));
+            } catch (e) {
+                console.warn('Spatial audio setup failed:', e);
+            }
+        }
+
+        // Stop spatial audio
+        function stopSpatialAudio() {
+            const audioEl = document.getElementById('spatial-audio-element');
+            if (audioEl) {
+                audioEl.pause();
+                audioEl.currentTime = 0;
+            }
+            isAudioPlaying = false;
+        }
+
+        // Setup video background with faded edges
+        function setupVideoBackground() {
+            if (!arMediaConfig.video || !arMediaConfig.video.enabled) return;
+            
+            const videoEl = document.getElementById('bg-video');
+            if (videoEl && arMediaConfig.video.src) {
+                videoEl.src = arMediaConfig.video.src;
+                
+                // Update video plane size from config
+                const videoPlane = document.getElementById('video-bg-plane');
+                if (videoPlane) {
+                    const width = arMediaConfig.video.width || 2.5;
+                    const height = arMediaConfig.video.height || 1.5;
+                    videoPlane.setAttribute('width', width);
+                    videoPlane.setAttribute('height', height);
+                    videoPlane.setAttribute('material', `shader: flat; side: double; transparent: true; opacity: ${arMediaConfig.video.opacity || 0.8}`);
+                }
+            }
+        }
+
+        // Apply video texture with faded edges
+        function applyVideoTexture() {
+            if (!arMediaConfig.video || !arMediaConfig.video.enabled) return;
+            
+            const videoEl = document.getElementById('bg-video');
+            const videoPlane = document.getElementById('video-bg-plane');
+            const videoBgEntity = document.getElementById('video-bg-entity');
+            
+            if (videoEl && videoPlane && videoBgEntity) {
+                // Create canvas for faded edge effect
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                // Create radial gradient mask for faded edges
+                const gradient = ctx.createRadialGradient(256, 256, 100, 256, 256, 256);
+                gradient.addColorStop(0, 'white');
+                gradient.addColorStop(0.6, 'white');
+                gradient.addColorStop(1, 'transparent');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(0, 0, 512, 512);
+                
+                // Apply video as texture (A-Frame handles this)
+                videoPlane.setAttribute('src', '#bg-video');
+                
+                // Make visible
+                videoBgEntity.setAttribute('visible', 'true');
+                
+                // Start video playback
+                videoEl.play().catch(e => console.warn('Video autoplay failed:', e));
+            }
         }
 
         // Create card canvas texture
@@ -336,7 +482,7 @@
                 ctx.fillText('Skills & Expertise', canvas.width / 2, 115);
 
                 // Skills tags in 2-column grid
-                const skills = skillsConfig.length > 0 ? skillsConfig : ['Skill 1', 'Skill 2', 'Skill 3', 'Skill 4', 'Skill 5'];
+                const skills = skillsConfig.length > 0 ? skillsConfig : ['Dev Web & Database', 'Design Graphique', 'SEO', 'Marketing Digital', 'Gestion de Projet'];
                 const skillStartY = 160;
                 const skillRowHeight = 50;
                 const skillColWidth = 280;
@@ -466,6 +612,10 @@
                 applyCardTextures();
             }
             
+            // Setup AR media (video and audio)
+            setupVideoBackground();
+            setupSpatialAudio();
+            
             // Fallback: hide loading after 3 seconds anyway
             setTimeout(() => {
                 const loading = document.getElementById('loading');
@@ -482,10 +632,17 @@
             target.addEventListener('targetFound', () => {
                 console.log('Target found!');
                 document.getElementById('scanning-hint').classList.add('hidden');
+                
+                // Start video and audio when marker is found
+                applyVideoTexture();
+                startSpatialAudio();
             });
             target.addEventListener('targetLost', () => {
                 console.log('Target lost');
                 document.getElementById('scanning-hint').classList.remove('hidden');
+                
+                // Optionally pause audio when marker is lost
+                // stopSpatialAudio();
             });
         }
 
@@ -506,6 +663,7 @@
 
         // Back button
         document.getElementById('btn-back').addEventListener('click', () => {
+            stopSpatialAudio();
             window.location.href = 'index.html';
         });
     </script>
