@@ -272,7 +272,7 @@ function createFrontContent() {
 
     contactItems.forEach(item => {
         const iconMesh = createTextMesh(item.icon, { fontSize: 24 });
-        iconMesh.position.set(-3.2, item.y, 0.01);
+        iconMesh.position.set(-1.2, item.y, 0.01);
         iconMesh.scale.set(0.6, 0.6, 1);
         frontGroup.add(iconMesh);
 
@@ -280,7 +280,7 @@ function createFrontContent() {
             fontSize: 20, 
             color: '#cccccc' 
         });
-        textMesh.position.set(-1.5, item.y, 0.01);
+        textMesh.position.set(1.5, item.y, 0.01);
         textMesh.scale.set(1.1, 0.75, 1);
         textMesh.userData = { 
             type: 'contact',
@@ -300,7 +300,7 @@ function createFrontContent() {
 function createBackContent() {
     const config = CARD_CONFIG;
     const style = config.cardStyle;
-    const depth = -(style.depth / 2 + 0.01);
+    const depth = -(style.depth / 2 + 0.05);
 
     // Create a group for back content
     const backGroup = new THREE.Group();
@@ -313,7 +313,7 @@ function createBackContent() {
         fontWeight: 'bold',
         color: '#ffffff'
     });
-    taglineMesh.position.set(0, 2, 0.01);
+    taglineMesh.position.set(0, 2, 0.05);
     taglineMesh.scale.set(1.4, 1, 1);
     backGroup.add(taglineMesh);
 
@@ -322,7 +322,7 @@ function createBackContent() {
         fontSize: 22,
         color: '#00d4ff'
     });
-    skillsTitle.position.set(0, 1.2, 0.01);
+    skillsTitle.position.set(0, 1.2, 0.05);
     skillsTitle.scale.set(0.9, 0.7, 1);
     backGroup.add(skillsTitle);
 
@@ -332,7 +332,7 @@ function createBackContent() {
         const col = index % 2;
         
         const skillTag = createSkillTag(skill);
-        skillTag.position.set(-1.1 + col * 2.2, 0.5 - row * 0.6, 0);
+        skillTag.position.set(-1.1 + col * 2.2, 0.5 - row * 0.6, 0.05);
         backGroup.add(skillTag);
     });
 
@@ -341,7 +341,7 @@ function createBackContent() {
         fontSize: 16,
         color: '#aaaaaa'
     });
-    bioMesh.position.set(0, -1.8, 0.01);
+    bioMesh.position.set(0, -1.8, 0.05);
     bioMesh.scale.set(1.4, 1.1, 1);
     backGroup.add(bioMesh);
 
@@ -373,11 +373,11 @@ function createSocialIcons(parent) {
 
         // Icon symbol
         const symbolMesh = createTextMesh(icon.symbol, {
-            fontSize: 28,
+            fontSize: 36,
             color: '#ffffff'
         });
         symbolMesh.position.z = 0.02;
-        symbolMesh.scale.set(0.25, 0.7, 1);
+        symbolMesh.scale.set(0.35, 0.35, 1);
         iconGroup.add(symbolMesh);
 
         iconGroup.position.set(-2.6 + index * 1.2, -2.3, 0);

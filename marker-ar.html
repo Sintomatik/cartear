@@ -2,9 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Business Card - Marker Mode</title>
-    <!-- A-Frame and MindAR -->
     <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
@@ -14,55 +13,12 @@
             box-sizing: border-box;
         }
 
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            background: #1a1a2e;
-        }
-
-        #ar-container {
-            width: 100vw;
-            height: 100vh;
-            position: relative;
-        }
-
-        #loading {
-            position: fixed;
-            top: 0;
-            left: 0;
+        html, body {
             width: 100%;
             height: 100%;
-            background: #1a1a2e;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            transition: opacity 0.5s ease;
-        }
-
-        #loading.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-
-        .loader {
-            width: 50px;
-            height: 50px;
-            border: 3px solid rgba(255, 255, 255, 0.1);
-            border-top-color: #00d4ff;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        .loading-text {
-            color: #00d4ff;
-            margin-top: 20px;
-            font-size: 1rem;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #000;
         }
 
         #controls {
@@ -72,7 +28,7 @@
             transform: translateX(-50%);
             display: flex;
             gap: 10px;
-            z-index: 100;
+            z-index: 9999;
         }
 
         .control-btn {
@@ -101,7 +57,7 @@
             padding: 15px 20px;
             border-radius: 15px;
             color: white;
-            z-index: 100;
+            z-index: 9999;
             max-width: 280px;
         }
 
@@ -127,7 +83,7 @@
             border-radius: 15px;
             color: white;
             text-align: center;
-            z-index: 50;
+            z-index: 9998;
             transition: opacity 0.3s ease;
         }
 
@@ -143,135 +99,15 @@
     </style>
 </head>
 <body>
-    <div id="loading">
-        <div class="loader"></div>
-        <p class="loading-text">Initializing AR Camera...</p>
-    </div>
-
-    <div id="info-overlay">
-        <h2>📷 Marker AR Mode</h2>
-        <p>Point your camera at the marker image to see the AR business card appear!</p>
-    </div>
-
-    <div id="scanning-hint">
-        <div class="icon">🎯</div>
-        <p>Scanning for marker...<br>Point camera at the target image</p>
-    </div>
-
-    <div id="controls">
-        <button class="control-btn" id="btn-flip">Flip Card</button>
-        <button class="control-btn" id="btn-back">← Back</button>
-    </div>
-
     <script src="config.js"></script>
     <script>
-        // Wait for config to load, then setup the A-Frame scene
-        document.addEventListener('DOMContentLoaded', () => {
-            const markerFile = (typeof CARD_CONFIG !== 'undefined' && CARD_CONFIG.markerAR?.markerFile) 
-                || './markers/target.mind';
-            const config = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.personalInfo : {};
-            
-            // Create A-Frame scene dynamically
-            const sceneHTML = `
-                <a-scene 
-                    mindar-image="imageTargetSrc: ${markerFile}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
-                    color-space="sRGB"
-                    renderer="colorManagement: true"
-                    vr-mode-ui="enabled: false"
-                    device-orientation-permission-ui="enabled: false"
-                    embedded
-                    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
-                    
-                    <a-assets>
-                        <canvas id="card-front-canvas"></canvas>
-                        <canvas id="card-back-canvas"></canvas>
-                    </a-assets>
-                    
-                    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
-                    
-                    <a-entity mindar-image-target="targetIndex: 0" id="card-target">
-                        <!-- Card group -->
-                        <a-entity id="card-group" position="0 0 0">
-                            <!-- Front face -->
-                            <a-plane 
-                                id="card-front"
-                                position="0 0 0.01"
-                                width="1.6"
-                                height="1.0"
-                                material="shader: flat; transparent: true;">
-                            </a-plane>
-                            
-                            <!-- Back face -->
-                            <a-plane 
-                                id="card-back"
-                                position="0 0 -0.01"
-                                rotation="0 180 0"
-                                width="1.6"
-                                height="1.0"
-                                material="shader: flat; transparent: true;">
-                            </a-plane>
-                            
-                            <!-- Glow border -->
-                            <a-box
-                                position="0 0 0"
-                                width="1.62"
-                                height="1.02"
-                                depth="0.02"
-                                material="color: #00d4ff; opacity: 0.2; transparent: true;">
-                            </a-box>
-                        </a-entity>
-                        
-                        <!-- Ambient light -->
-                        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
-                    </a-entity>
-                </a-scene>
-            `;
-            
-            // Insert scene
-            document.body.insertAdjacentHTML('afterbegin', sceneHTML);
-            
-            // Wait for scene to initialize
-            const scene = document.querySelector('a-scene');
-            scene.addEventListener('loaded', () => {
-                // Create card textures
-                const frontCanvas = createCardCanvas('front', config);
-                const backCanvas = createCardCanvas('back', config);
-                
-                // Apply textures
-                const frontPlane = document.getElementById('card-front');
-                const backPlane = document.getElementById('card-back');
-                
-                if (frontPlane && backPlane) {
-                    frontPlane.setAttribute('material', {
-                        shader: 'flat',
-                        src: frontCanvas.toDataURL(),
-                        transparent: true
-                    });
-                    
-                    backPlane.setAttribute('material', {
-                        shader: 'flat',
-                        src: backCanvas.toDataURL(),
-                        transparent: true
-                    });
-                }
-                
-                // Hide loading
-                document.getElementById('loading').classList.add('hidden');
-            });
-            
-            // Track target visibility
-            const target = document.getElementById('card-target');
-            if (target) {
-                target.addEventListener('targetFound', () => {
-                    document.getElementById('scanning-hint').classList.add('hidden');
-                });
-                target.addEventListener('targetLost', () => {
-                    document.getElementById('scanning-hint').classList.remove('hidden');
-                });
-            }
-        });
-        
-        function createCardCanvas(side, config) {
+        // Get config values
+        const markerFile = (typeof CARD_CONFIG !== 'undefined' && CARD_CONFIG.markerAR?.markerFile) 
+            || './markers/target.mind';
+        const personalConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.personalInfo : {};
+
+        // Create card canvas textures
+        function createCardCanvas(side) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
@@ -295,18 +131,18 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.font = 'bold 48px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'center';
-                ctx.fillText(config.firstName || 'FIRST', canvas.width / 2, 120);
-                ctx.fillText(config.surname || 'SURNAME', canvas.width / 2, 180);
+                ctx.fillText(personalConfig.firstName || 'FIRST', canvas.width / 2, 120);
+                ctx.fillText(personalConfig.surname || 'SURNAME', canvas.width / 2, 180);
 
                 // Title
                 ctx.fillStyle = '#00d4ff';
                 ctx.font = '28px Segoe UI, Arial, sans-serif';
-                ctx.fillText(config.title || 'Title', canvas.width / 2, 240);
+                ctx.fillText(personalConfig.title || 'Title', canvas.width / 2, 240);
 
                 // Company
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = '24px Segoe UI, Arial, sans-serif';
-                ctx.fillText(config.company || 'Company', canvas.width / 2, 280);
+                ctx.fillText(personalConfig.company || 'Company', canvas.width / 2, 280);
 
                 // Divider
                 ctx.strokeStyle = '#00d4ff';
@@ -322,9 +158,9 @@
                 ctx.fillStyle = '#cccccc';
                 ctx.font = '20px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'left';
-                ctx.fillText('📧  ' + (config.email || 'email@example.com'), 100, 360);
-                ctx.fillText('📱  ' + (config.phone || '+1 234 567 890'), 100, 400);
-                ctx.fillText('🌐  ' + (config.website || 'www.example.com'), 100, 440);
+                ctx.fillText('📧  ' + (personalConfig.email || 'email@example.com'), 100, 360);
+                ctx.fillText('📱  ' + (personalConfig.phone || '+1 234 567 890'), 100, 400);
+                ctx.fillText('🌐  ' + (personalConfig.website || 'www.example.com'), 100, 440);
 
             } else {
                 // Back side
@@ -341,7 +177,7 @@
                 // Location
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = '24px Segoe UI, Arial, sans-serif';
-                ctx.fillText('📍 ' + (config.location || 'Location'), canvas.width / 2, 350);
+                ctx.fillText('📍 ' + (personalConfig.location || 'Location'), canvas.width / 2, 350);
 
                 // Hint
                 ctx.fillStyle = '#555555';
@@ -351,28 +187,114 @@
 
             return canvas;
         }
-        
-        let isFlipped = false;
-        
-        function flipCard() {
-            const cardGroup = document.getElementById('card-group');
-            if (!cardGroup) return;
-            
-            isFlipped = !isFlipped;
-            const targetRotation = isFlipped ? 180 : 0;
-            
-            cardGroup.setAttribute('animation', {
-                property: 'rotation',
-                to: `0 ${targetRotation} 0`,
-                dur: 500,
-                easing: 'easeOutCubic'
-            });
-        }
 
-        // Event listeners
-        document.getElementById('btn-flip').addEventListener('click', flipCard);
-        document.getElementById('btn-back').addEventListener('click', () => {
-            window.location.href = 'index.html';
+        // Create textures as data URLs
+        const frontTextureURL = createCardCanvas('front').toDataURL();
+        const backTextureURL = createCardCanvas('back').toDataURL();
+
+        // Write the full page HTML including A-Frame scene
+        document.write(`
+            <a-scene
+                mindar-image="imageTargetSrc: ${markerFile}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+                color-space="sRGB"
+                renderer="colorManagement: true; antialias: true;"
+                vr-mode-ui="enabled: false"
+                device-orientation-permission-ui="enabled: false"
+                style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+                
+                <a-assets>
+                    <img id="card-front-img" src="${frontTextureURL}">
+                    <img id="card-back-img" src="${backTextureURL}">
+                </a-assets>
+                
+                <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                
+                <a-entity mindar-image-target="targetIndex: 0" id="card-target">
+                    <a-entity id="card-group" position="0 0 0.1" scale="1 1 1">
+                        <a-plane 
+                            id="card-front"
+                            position="0 0 0.01"
+                            width="1"
+                            height="0.625"
+                            src="#card-front-img"
+                            material="shader: flat; side: double; transparent: true;">
+                        </a-plane>
+                        
+                        <a-plane 
+                            id="card-back"
+                            position="0 0 -0.01"
+                            rotation="0 180 0"
+                            width="1"
+                            height="0.625"
+                            src="#card-back-img"
+                            material="shader: flat; side: double; transparent: true;">
+                        </a-plane>
+                    </a-entity>
+                    
+                    <a-light type="ambient" color="#ffffff" intensity="1"></a-light>
+                </a-entity>
+            </a-scene>
+
+            <div id="info-overlay">
+                <h2>📷 Marker AR Mode</h2>
+                <p>Point your camera at the marker image to see the AR business card appear!</p>
+            </div>
+
+            <div id="scanning-hint">
+                <div class="icon">🎯</div>
+                <p>Scanning for marker...<br>Point camera at the target image</p>
+            </div>
+
+            <div id="controls">
+                <button class="control-btn" id="btn-flip">Flip Card</button>
+                <button class="control-btn" id="btn-back">← Back</button>
+            </div>
+        `);
+
+        // Setup event listeners after DOM is ready
+        window.addEventListener('load', () => {
+            // Setup target tracking events
+            const target = document.querySelector('#card-target');
+            if (target) {
+                target.addEventListener('targetFound', () => {
+                    console.log('Target found!');
+                    const hint = document.getElementById('scanning-hint');
+                    if (hint) hint.classList.add('hidden');
+                });
+                target.addEventListener('targetLost', () => {
+                    console.log('Target lost');
+                    const hint = document.getElementById('scanning-hint');
+                    if (hint) hint.classList.remove('hidden');
+                });
+            }
+
+            // Flip card functionality
+            let isFlipped = false;
+            const flipBtn = document.getElementById('btn-flip');
+            if (flipBtn) {
+                flipBtn.addEventListener('click', () => {
+                    const cardGroup = document.querySelector('#card-group');
+                    if (!cardGroup) return;
+                    
+                    isFlipped = !isFlipped;
+                    const targetRotation = isFlipped ? 180 : 0;
+                    
+                    cardGroup.setAttribute('animation', {
+                        property: 'rotation',
+                        to: `0 ${targetRotation} 0`,
+                        dur: 500,
+                        easing: 'easeOutCubic'
+                    });
+                });
+            }
+
+            // Back button
+            const backBtn = document.getElementById('btn-back');
+            if (backBtn) {
+                backBtn.addEventListener('click', () => {
+                    window.location.href = 'index.html';
+                });
+            }
         });
     </script>
 </body>
