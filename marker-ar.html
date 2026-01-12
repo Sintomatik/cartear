@@ -106,6 +106,7 @@
             init: function() {
                 const el = this.el;
                 const data = this.data;
+                const self = this;
                 
                 // Create video element
                 const video = document.createElement('video');
@@ -114,32 +115,61 @@
                 video.muted = true;
                 video.playsInline = true;
                 video.crossOrigin = 'anonymous';
-                video.autoplay = true;
+                video.setAttribute('webkit-playsinline', 'true');
+                video.style.display = 'none';
+                document.body.appendChild(video);
                 
-                // Create Three.js video texture
-                video.addEventListener('loadeddata', () => {
-                    console.log('Video loaded, creating texture');
-                    const texture = new THREE.VideoTexture(video);
-                    texture.minFilter = THREE.LinearFilter;
-                    texture.magFilter = THREE.LinearFilter;
-                    texture.format = THREE.RGBAFormat;
-                    
-                    // Apply material
-                    const mesh = el.getObject3D('mesh');
-                    if (mesh) {
-                        mesh.material = new THREE.MeshBasicMaterial({
-                            map: texture,
-                            transparent: true,
-                            opacity: data.opacity,
-                            side: THREE.DoubleSide
-                        });
-                    }
-                    
-                    video.play().catch(e => console.warn('Video play failed:', e));
+                this.video = video;
+                this.textureApplied = false;
+                
+                // Create texture immediately
+                const texture = new THREE.VideoTexture(video);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.format = THREE.RGBFormat;
+                texture.generateMipmaps = false;
+                this.texture = texture;
+                
+                // Create material
+                this.material = new THREE.MeshBasicMaterial({
+                    map: texture,
+                    transparent: true,
+                    opacity: data.opacity,
+                    side: THREE.DoubleSide
                 });
                 
+                // Apply when mesh is ready
+                el.addEventListener('object3dset', () => {
+                    self.applyMaterial();
+                });
+                
+                // Also try to apply after a short delay
+                setTimeout(() => {
+                    self.applyMaterial();
+                }, 100);
+                
+                // Load and play video
                 video.load();
-                this.video = video;
+                video.addEventListener('canplaythrough', () => {
+                    console.log('Video can play through');
+                    video.play().catch(e => console.warn('Video play failed:', e));
+                });
+            },
+            applyMaterial: function() {
+                if (this.textureApplied) return;
+                
+                const mesh = this.el.getObject3D('mesh');
+                if (mesh && this.material) {
+                    mesh.material = this.material;
+                    this.textureApplied = true;
+                    console.log('Video material applied to mesh');
+                }
+            },
+            tick: function() {
+                // Keep texture updated
+                if (this.texture && this.video && !this.video.paused) {
+                    this.texture.needsUpdate = true;
+                }
             },
             play: function() {
                 if (this.video) {
@@ -149,6 +179,11 @@
             pause: function() {
                 if (this.video) {
                     this.video.pause();
+                }
+            },
+            remove: function() {
+                if (this.video && this.video.parentNode) {
+                    this.video.parentNode.removeChild(this.video);
                 }
             }
         });
