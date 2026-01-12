@@ -108,18 +108,18 @@
         <a-assets>
             <img id="card-front-img" crossorigin="anonymous">
             <img id="card-back-img" crossorigin="anonymous">
-            <video id="bg-video" autoplay loop muted playsinline crossorigin="anonymous"></video>
+            <video id="bg-video" autoplay loop muted playsinline crossorigin="anonymous" preload="auto"></video>
         </a-assets>
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
         <a-entity mindar-image-target="targetIndex: 0" id="card-target">
             <!-- Video background behind card -->
-            <a-entity id="video-bg-entity" position="0 0 -0.1" visible="false">
+            <a-entity id="video-bg-entity" position="0 0 -0.3" visible="false">
                 <a-plane 
                     id="video-bg-plane"
-                    width="2.5"
-                    height="1.5"
+                    width="3"
+                    height="2"
                     material="shader: flat; side: double; transparent: true; opacity: 0.8;">
                 </a-plane>
             </a-entity>
@@ -271,16 +271,19 @@
             const videoEl = document.getElementById('bg-video');
             if (videoEl && arMediaConfig.video.src) {
                 videoEl.src = arMediaConfig.video.src;
+                videoEl.load(); // Preload video
                 
                 // Update video plane size from config
                 const videoPlane = document.getElementById('video-bg-plane');
                 if (videoPlane) {
-                    const width = arMediaConfig.video.width || 2.5;
-                    const height = arMediaConfig.video.height || 1.5;
+                    const width = (arMediaConfig.video.width || 2.5) * 1.5;
+                    const height = (arMediaConfig.video.height || 1.5) * 1.5;
                     videoPlane.setAttribute('width', width);
                     videoPlane.setAttribute('height', height);
-                    videoPlane.setAttribute('material', `shader: flat; side: double; transparent: true; opacity: ${arMediaConfig.video.opacity || 0.8}`);
+                    videoPlane.setAttribute('material', `shader: flat; side: double; transparent: true; opacity: ${arMediaConfig.video.opacity || 0.8}; src: #bg-video`);
                 }
+                
+                console.log('Video background setup complete');
             }
         }
 
@@ -293,29 +296,26 @@
             const videoBgEntity = document.getElementById('video-bg-entity');
             
             if (videoEl && videoPlane && videoBgEntity) {
-                // Create canvas for faded edge effect
-                const canvas = document.createElement('canvas');
-                canvas.width = 512;
-                canvas.height = 512;
-                const ctx = canvas.getContext('2d');
+                console.log('Applying video texture...');
                 
-                // Create radial gradient mask for faded edges
-                const gradient = ctx.createRadialGradient(256, 256, 100, 256, 256, 256);
-                gradient.addColorStop(0, 'white');
-                gradient.addColorStop(0.6, 'white');
-                gradient.addColorStop(1, 'transparent');
-                
-                ctx.fillStyle = gradient;
-                ctx.fillRect(0, 0, 512, 512);
-                
-                // Apply video as texture (A-Frame handles this)
-                videoPlane.setAttribute('src', '#bg-video');
+                // Apply video as texture
+                videoPlane.setAttribute('material', 'src', '#bg-video');
                 
                 // Make visible
                 videoBgEntity.setAttribute('visible', 'true');
                 
                 // Start video playback
-                videoEl.play().catch(e => console.warn('Video autoplay failed:', e));
+                if (videoEl.readyState >= 2) {
+                    videoEl.play().then(() => {
+                        console.log('Video playing');
+                    }).catch(e => console.warn('Video autoplay failed:', e));
+                } else {
+                    videoEl.addEventListener('canplay', () => {
+                        videoEl.play().then(() => {
+                            console.log('Video playing after canplay');
+                        }).catch(e => console.warn('Video autoplay failed:', e));
+                    }, { once: true });
+                }
             }
         }
 
@@ -383,18 +383,18 @@
                 ctx.font = 'bold 40px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'alphabetic';
-                ctx.fillText(personalConfig.firstName || 'FIRST', 530, 95);
-                ctx.fillText(personalConfig.surname || 'SURNAME', 530, 145);
+                ctx.fillText(personalConfig.firstName || '', 530, 95);
+                ctx.fillText(personalConfig.surname || '', 530, 145);
 
                 // Title
                 ctx.fillStyle = '#00d4ff';
                 ctx.font = '22px Segoe UI, Arial, sans-serif';
-                ctx.fillText(personalConfig.title || 'Title', 530, 185);
+                ctx.fillText(personalConfig.title || '', 530, 185);
 
                 // Company
                 ctx.fillStyle = '#aaaaaa';
                 ctx.font = '18px Segoe UI, Arial, sans-serif';
-                ctx.fillText(personalConfig.company || 'Company', 530, 215);
+                ctx.fillText(personalConfig.company || '', 530, 215);
 
                 // Divider line
                 ctx.strokeStyle = '#00d4ff';
@@ -416,55 +416,25 @@
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText('📧', 150, contactY);
                 ctx.fillStyle = '#cccccc';
-                ctx.fillText(personalConfig.email || 'email@example.com', 180, contactY);
+                ctx.fillText(personalConfig.email || '', 180, contactY);
                 
                 // Phone
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText('📱', 150, contactY + contactSpacing);
                 ctx.fillStyle = '#cccccc';
-                ctx.fillText(personalConfig.phone || '+1 234 567 890', 180, contactY + contactSpacing);
+                ctx.fillText(personalConfig.phone || '', 180, contactY + contactSpacing);
                 
                 // Website
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText('🌐', 150, contactY + contactSpacing * 2);
                 ctx.fillStyle = '#cccccc';
-                ctx.fillText(personalConfig.website || 'www.example.com', 180, contactY + contactSpacing * 2);
+                ctx.fillText(personalConfig.website || '', 180, contactY + contactSpacing * 2);
                 
                 // Location
                 ctx.fillStyle = '#ffffff';
                 ctx.fillText('📍', 150, contactY + contactSpacing * 3);
                 ctx.fillStyle = '#cccccc';
-                ctx.fillText(personalConfig.location || 'Location', 180, contactY + contactSpacing * 3);
-
-                // Social icons at bottom
-                const socialY = 460;
-                const socialIcons = [
-                    { symbol: 'in', color: '#0077b5' },
-                    { symbol: '⌘', color: '#333333' },
-                    { symbol: '𝕏', color: '#1da1f2' },
-                    { symbol: '◈', color: '#00d4ff' }
-                ];
-                const socialStartX = 250;
-                const socialSpacing = 110;
-                
-                socialIcons.forEach((icon, i) => {
-                    const x = socialStartX + i * socialSpacing;
-                    
-                    // Background circle
-                    ctx.beginPath();
-                    ctx.arc(x, socialY, 35, 0, Math.PI * 2);
-                    ctx.fillStyle = icon.color;
-                    ctx.globalAlpha = 0.8;
-                    ctx.fill();
-                    ctx.globalAlpha = 1;
-                    
-                    // Icon symbol
-                    ctx.fillStyle = '#ffffff';
-                    ctx.font = 'bold 28px Segoe UI, Arial, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(icon.symbol, x, socialY);
-                });
+                ctx.fillText(personalConfig.location || '', 180, contactY + contactSpacing * 3);
 
             } else {
                 // BACK SIDE - matching 3D card
@@ -474,7 +444,7 @@
                 ctx.font = 'bold 28px Segoe UI, Arial, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'alphabetic';
-                ctx.fillText(additionalInfo.tagline || 'Your Personal Tagline', canvas.width / 2, 65);
+                ctx.fillText(additionalInfo.tagline || '', canvas.width / 2, 65);
 
                 // Skills section title
                 ctx.fillStyle = '#00d4ff';
@@ -482,7 +452,7 @@
                 ctx.fillText('Skills & Expertise', canvas.width / 2, 115);
 
                 // Skills tags in 2-column grid
-                const skills = skillsConfig.length > 0 ? skillsConfig : ['Dev Web & Database', 'Design Graphique', 'SEO', 'Marketing Digital', 'Gestion de Projet'];
+                const skills = skillsConfig.length > 0 ? skillsConfig : [];
                 const skillStartY = 160;
                 const skillRowHeight = 50;
                 const skillColWidth = 280;
@@ -523,7 +493,7 @@
                 ctx.textBaseline = 'alphabetic';
                 
                 // Word wrap bio text
-                const bio = additionalInfo.bio || 'A brief description about yourself.';
+                const bio = additionalInfo.bio || '';
                 const maxWidth = 650;
                 const words = bio.split(' ');
                 let line = '';

@@ -300,9 +300,6 @@ function createFrontContent() {
         interactiveObjects.push(textMesh);
     });
 
-    // Social media icons
-    createSocialIcons(frontGroup);
-
     cardGroup.add(frontGroup);
     cardFront = frontGroup;
 }
@@ -684,24 +681,12 @@ function onMouseClick(event) {
 
 function handleInteraction(userData) {
     switch (userData.type) {
-        case 'social':
-            console.log(`Opening ${userData.name}: ${userData.url}`);
-            // In production, you would open the URL
-            // window.open(userData.url, '_blank');
-            showNotification(`${userData.name} link clicked!`);
-            break;
         case 'contact':
             console.log('Contact info clicked');
             showNotification('Contact info copied to clipboard!');
             break;
-        case 'qrcode':
-            showNotification('QR Code - Replace with your vCard QR!');
-            break;
         case 'profile':
-            showNotification('Profile Photo placeholder - Add your image URL in config.js');
-            break;
-        case 'logo':
-            showNotification('Logo placeholder - Add your logo URL in config.js');
+            showNotification('Profile Photo');
             break;
     }
 }
@@ -801,11 +786,20 @@ function createARVideoBackground() {
     arVideoElement.muted = true; // Muted to allow autoplay
     arVideoElement.playsInline = true;
     arVideoElement.crossOrigin = 'anonymous';
+    arVideoElement.preload = 'auto';
+    
+    // Add to DOM (hidden) to ensure it loads
+    arVideoElement.style.display = 'none';
+    document.body.appendChild(arVideoElement);
+    
+    // Load video
+    arVideoElement.load();
     
     // Create video texture
     const videoTexture = new THREE.VideoTexture(arVideoElement);
     videoTexture.minFilter = THREE.LinearFilter;
     videoTexture.magFilter = THREE.LinearFilter;
+    videoTexture.format = THREE.RGBAFormat;
     
     // Shader material with faded edges
     const videoMaterial = new THREE.ShaderMaterial({
@@ -846,16 +840,19 @@ function createARVideoBackground() {
         depthWrite: false
     });
     
-    // Create plane geometry
+    // Create plane geometry - larger size for AR
     const width = mediaConfig.video.width || 3;
     const height = mediaConfig.video.height || 2;
-    const geometry = new THREE.PlaneGeometry(width, height);
+    const geometry = new THREE.PlaneGeometry(width * 4, height * 4);
     
     arVideoMesh = new THREE.Mesh(geometry, videoMaterial);
-    arVideoMesh.position.set(0, 0, -0.5); // Behind the card
+    arVideoMesh.position.set(0, 0, -2); // Behind the card (in local space)
     arVideoMesh.visible = false;
+    arVideoMesh.renderOrder = -1; // Render behind everything
     
     cardGroup.add(arVideoMesh);
+    
+    console.log('AR Video background created');
 }
 
 // Create spatial audio positioned at the card
@@ -888,15 +885,31 @@ function createARSpatialAudio() {
 
 // Start AR media playback
 function startARMedia() {
+    console.log('Starting AR media...');
+    
     // Start video
     if (arVideoElement && arVideoMesh) {
         arVideoMesh.visible = true;
-        arVideoElement.play().catch(e => console.warn('Video autoplay failed:', e));
+        console.log('Video mesh visible, attempting to play video...');
+        
+        // Ensure video is ready
+        if (arVideoElement.readyState >= 2) {
+            arVideoElement.play().then(() => {
+                console.log('Video playing successfully');
+            }).catch(e => console.warn('Video autoplay failed:', e));
+        } else {
+            arVideoElement.addEventListener('canplay', () => {
+                arVideoElement.play().then(() => {
+                    console.log('Video playing after canplay event');
+                }).catch(e => console.warn('Video autoplay failed:', e));
+            }, { once: true });
+        }
     }
     
     // Start audio (requires user interaction)
     if (arPositionalAudio && arPositionalAudio.buffer && !arPositionalAudio.isPlaying) {
         arPositionalAudio.play();
+        console.log('Audio playing');
     }
 }
 

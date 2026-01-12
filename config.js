@@ -135,8 +135,8 @@ const CARD_CONFIG = {
     // ADDITIONAL INFO (Back of card)
     // ==========================================
     additionalInfo: {
-        tagline: "Your Personal Tagline Here",
-        bio: "A brief description about yourself and what you do.",
+        tagline: "",
+        bio: "",
     }
 };
 
