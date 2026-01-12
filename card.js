@@ -306,40 +306,6 @@ function createBackContent() {
     backGroup.position.z = depth;
     backGroup.rotation.y = Math.PI;
 
-    // QR Code placeholder
-    if (config.interactiveElements.qrCode.enabled) {
-        const qrSize = config.interactiveElements.qrCode.size;
-        const qrGeometry = new THREE.PlaneGeometry(qrSize * 2, qrSize * 2);
-        
-        let qrMaterial;
-        if (config.interactiveElements.qrCode.placeholder) {
-            const canvas = createQRPlaceholder(qrSize * 100);
-            const texture = new THREE.CanvasTexture(canvas);
-            qrMaterial = new THREE.MeshBasicMaterial({ 
-                map: texture,
-                transparent: true 
-            });
-        }
-        
-        const qrMesh = new THREE.Mesh(qrGeometry, qrMaterial);
-        qrMesh.position.set(2.5, 0, 0);
-        qrMesh.userData = { 
-            type: 'qrcode',
-            tooltip: 'QR Code - Scan for contact info'
-        };
-        backGroup.add(qrMesh);
-        interactiveObjects.push(qrMesh);
-
-        // QR Code label
-        const qrLabel = createTextMesh('Scan Me!', {
-            fontSize: 18,
-            color: '#00d4ff'
-        });
-        qrLabel.position.set(2.5, -1.8, 0.01);
-        qrLabel.scale.set(0.6, 0.55, 1);
-        backGroup.add(qrLabel);
-    }
-
     // Tagline
     const taglineMesh = createTextMesh(config.additionalInfo.tagline, {
         fontSize: 28,
@@ -377,28 +343,6 @@ function createBackContent() {
     bioMesh.position.set(-1, -1.8, 0.01);
     bioMesh.scale.set(1.4, 1.1, 1);
     backGroup.add(bioMesh);
-
-    // Logo placeholder
-    if (config.interactiveElements.logo.enabled) {
-        const logoSize = config.interactiveElements.logo.size;
-        const logoGeometry = new THREE.PlaneGeometry(logoSize * 2, logoSize);
-        
-        const canvas = createPlaceholderCanvas('LOGO', logoSize * 80);
-        const texture = new THREE.CanvasTexture(canvas);
-        const logoMaterial = new THREE.MeshBasicMaterial({ 
-            map: texture,
-            transparent: true 
-        });
-        
-        const logoMesh = new THREE.Mesh(logoGeometry, logoMaterial);
-        logoMesh.position.set(-2.5, -2.2, 0);
-        logoMesh.userData = { 
-            type: 'logo',
-            tooltip: 'Company Logo - Click to customize'
-        };
-        backGroup.add(logoMesh);
-        interactiveObjects.push(logoMesh);
-    }
 
     cardGroup.add(backGroup);
     cardBack = backGroup;
@@ -619,43 +563,6 @@ function createPlaceholderCanvas(text, size) {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, size/2, size/2);
-
-    return canvas;
-}
-
-function createQRPlaceholder(size) {
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d');
-
-    // White background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, size, size);
-
-    // QR-like pattern
-    const cellSize = size / 20;
-    ctx.fillStyle = '#000000';
-    
-    // Create a simple pattern that looks like QR
-    for (let i = 0; i < 20; i++) {
-        for (let j = 0; j < 20; j++) {
-            // Corner patterns
-            if ((i < 7 && j < 7) || (i < 7 && j > 12) || (i > 12 && j < 7)) {
-                if ((i < 1 || i > 5 || j < 1 || j > 5) ||
-                    (i > 1 && i < 5 && j > 1 && j < 5)) {
-                    ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
-                }
-            } else if (Math.random() > 0.5) {
-                ctx.fillRect(i * cellSize, j * cellSize, cellSize, cellSize);
-            }
-        }
-    }
-
-    // Border
-    ctx.strokeStyle = '#00d4ff';
-    ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, size - 4, size - 4);
 
     return canvas;
 }

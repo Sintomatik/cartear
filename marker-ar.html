@@ -4,9 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>AR Business Card - Marker Mode</title>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image.prod.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-three.prod.js"></script>
+    <!-- A-Frame and MindAR -->
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         * {
             margin: 0;
@@ -148,8 +148,6 @@
         <p class="loading-text">Initializing AR Camera...</p>
     </div>
 
-    <div id="ar-container"></div>
-
     <div id="info-overlay">
         <h2>📷 Marker AR Mode</h2>
         <p>Point your camera at the marker image to see the AR business card appear!</p>
@@ -167,136 +165,113 @@
 
     <script src="config.js"></script>
     <script>
-        // MindAR Marker-based AR Implementation
-        let mindarThree = null;
-        let cardGroup = null;
-        let isFlipped = false;
-        let markerFound = false;
-
-        async function initMarkerAR() {
-            const container = document.getElementById('ar-container');
+        // Wait for config to load, then setup the A-Frame scene
+        document.addEventListener('DOMContentLoaded', () => {
+            const markerFile = (typeof CARD_CONFIG !== 'undefined' && CARD_CONFIG.markerAR?.markerFile) 
+                || './markers/target.mind';
+            const config = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.personalInfo : {};
             
-            // Get marker file from config or use default
-            const markerFile = CARD_CONFIG.markerAR?.markerFile || './markers/target.mind';
+            // Create A-Frame scene dynamically
+            const sceneHTML = `
+                <a-scene 
+                    mindar-image="imageTargetSrc: ${markerFile}; autoStart: true; uiLoading: no; uiScanning: no; uiError: no;"
+                    color-space="sRGB"
+                    renderer="colorManagement: true"
+                    vr-mode-ui="enabled: false"
+                    device-orientation-permission-ui="enabled: false"
+                    embedded
+                    style="position: fixed; top: 0; left: 0; width: 100%; height: 100%;">
+                    
+                    <a-assets>
+                        <canvas id="card-front-canvas"></canvas>
+                        <canvas id="card-back-canvas"></canvas>
+                    </a-assets>
+                    
+                    <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+                    
+                    <a-entity mindar-image-target="targetIndex: 0" id="card-target">
+                        <!-- Card group -->
+                        <a-entity id="card-group" position="0 0 0">
+                            <!-- Front face -->
+                            <a-plane 
+                                id="card-front"
+                                position="0 0 0.01"
+                                width="1.6"
+                                height="1.0"
+                                material="shader: flat; transparent: true;">
+                            </a-plane>
+                            
+                            <!-- Back face -->
+                            <a-plane 
+                                id="card-back"
+                                position="0 0 -0.01"
+                                rotation="0 180 0"
+                                width="1.6"
+                                height="1.0"
+                                material="shader: flat; transparent: true;">
+                            </a-plane>
+                            
+                            <!-- Glow border -->
+                            <a-box
+                                position="0 0 0"
+                                width="1.62"
+                                height="1.02"
+                                depth="0.02"
+                                material="color: #00d4ff; opacity: 0.2; transparent: true;">
+                            </a-box>
+                        </a-entity>
+                        
+                        <!-- Ambient light -->
+                        <a-light type="ambient" color="#ffffff" intensity="0.8"></a-light>
+                    </a-entity>
+                </a-scene>
+            `;
             
-            try {
-                // Initialize MindAR
-                mindarThree = new window.MINDAR.IMAGE.MindARThree({
-                    container: container,
-                    imageTargetSrc: markerFile,
-                    uiLoading: "no",
-                    uiScanning: "no",
-                    uiError: "no",
-                });
-
-                const { renderer, scene, camera } = mindarThree;
-
-                // Setup lighting
-                const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-                scene.add(ambientLight);
-
-                const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-                directionalLight.position.set(0, 1, 1);
-                scene.add(directionalLight);
-
-                // Create anchor for the marker
-                const anchor = mindarThree.addAnchor(0);
-
-                // Create the business card
-                cardGroup = createARCard();
-                anchor.group.add(cardGroup);
-
-                // Track marker visibility
-                anchor.onTargetFound = () => {
-                    markerFound = true;
-                    document.getElementById('scanning-hint').classList.add('hidden');
-                };
-
-                anchor.onTargetLost = () => {
-                    markerFound = false;
-                    document.getElementById('scanning-hint').classList.remove('hidden');
-                };
-
-                // Start AR
-                await mindarThree.start();
-
+            // Insert scene
+            document.body.insertAdjacentHTML('afterbegin', sceneHTML);
+            
+            // Wait for scene to initialize
+            const scene = document.querySelector('a-scene');
+            scene.addEventListener('loaded', () => {
+                // Create card textures
+                const frontCanvas = createCardCanvas('front', config);
+                const backCanvas = createCardCanvas('back', config);
+                
+                // Apply textures
+                const frontPlane = document.getElementById('card-front');
+                const backPlane = document.getElementById('card-back');
+                
+                if (frontPlane && backPlane) {
+                    frontPlane.setAttribute('material', {
+                        shader: 'flat',
+                        src: frontCanvas.toDataURL(),
+                        transparent: true
+                    });
+                    
+                    backPlane.setAttribute('material', {
+                        shader: 'flat',
+                        src: backCanvas.toDataURL(),
+                        transparent: true
+                    });
+                }
+                
                 // Hide loading
                 document.getElementById('loading').classList.add('hidden');
-
-                // Animation loop
-                renderer.setAnimationLoop(() => {
-                    if (cardGroup && markerFound) {
-                        // Subtle floating animation
-                        cardGroup.position.y = Math.sin(Date.now() * 0.002) * 0.02;
-                    }
-                    renderer.render(scene, camera);
-                });
-
-            } catch (error) {
-                console.error('MindAR initialization error:', error);
-                document.querySelector('.loading-text').textContent = 'Error: Could not initialize AR. Check marker file.';
-            }
-        }
-
-        function createARCard() {
-            const config = CARD_CONFIG.personalInfo;
-            const style = CARD_CONFIG.cardStyle;
+            });
             
-            const group = new THREE.Group();
-
-            // Card dimensions (scaled for AR)
-            const width = 1.6;
-            const height = 1.0;
-            const depth = 0.02;
-
-            // Front face
-            const frontGeometry = new THREE.PlaneGeometry(width, height);
-            const frontCanvas = createCardCanvas('front', config, style);
-            const frontTexture = new THREE.CanvasTexture(frontCanvas);
-            const frontMaterial = new THREE.MeshBasicMaterial({ 
-                map: frontTexture,
-                side: THREE.FrontSide
-            });
-            const frontMesh = new THREE.Mesh(frontGeometry, frontMaterial);
-            frontMesh.position.z = depth / 2;
-            group.add(frontMesh);
-
-            // Back face
-            const backGeometry = new THREE.PlaneGeometry(width, height);
-            const backCanvas = createCardCanvas('back', config, style);
-            const backTexture = new THREE.CanvasTexture(backCanvas);
-            const backMaterial = new THREE.MeshBasicMaterial({ 
-                map: backTexture,
-                side: THREE.FrontSide
-            });
-            const backMesh = new THREE.Mesh(backGeometry, backMaterial);
-            backMesh.position.z = -depth / 2;
-            backMesh.rotation.y = Math.PI;
-            group.add(backMesh);
-
-            // Card edge
-            const edgeGeometry = new THREE.BoxGeometry(width, height, depth);
-            const edgeMaterial = new THREE.MeshBasicMaterial({ 
-                color: style.primaryColor,
-                transparent: true,
-                opacity: 0.3
-            });
-            const edge = new THREE.Mesh(edgeGeometry, edgeMaterial);
-            group.add(edge);
-
-            // Add glow border
-            const borderGeometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(width + 0.02, height + 0.02, depth + 0.01));
-            const borderMaterial = new THREE.LineBasicMaterial({ 
-                color: style.primaryColor,
-                linewidth: 2
-            });
-            const border = new THREE.LineSegments(borderGeometry, borderMaterial);
-            group.add(border);
-
-            return group;
-        }
-
-        function createCardCanvas(side, config, style) {
+            // Track target visibility
+            const target = document.getElementById('card-target');
+            if (target) {
+                target.addEventListener('targetFound', () => {
+                    document.getElementById('scanning-hint').classList.add('hidden');
+                });
+                target.addEventListener('targetLost', () => {
+                    document.getElementById('scanning-hint').classList.remove('hidden');
+                });
+            }
+        });
+        
+        function createCardCanvas(side, config) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
@@ -358,7 +333,7 @@
                 ctx.textAlign = 'center';
                 ctx.fillText('CONNECT WITH ME', canvas.width / 2, 150);
 
-                // Social icons placeholder
+                // Social icons
                 ctx.fillStyle = '#00d4ff';
                 ctx.font = '60px Arial';
                 ctx.fillText('💼  🐙  🐦', canvas.width / 2, 260);
@@ -368,7 +343,7 @@
                 ctx.font = '24px Segoe UI, Arial, sans-serif';
                 ctx.fillText('📍 ' + (config.location || 'Location'), canvas.width / 2, 350);
 
-                // QR placeholder hint
+                // Hint
                 ctx.fillStyle = '#555555';
                 ctx.font = '16px Segoe UI, Arial, sans-serif';
                 ctx.fillText('Scan the marker to view this card in AR!', canvas.width / 2, 440);
@@ -376,44 +351,29 @@
 
             return canvas;
         }
-
+        
+        let isFlipped = false;
+        
         function flipCard() {
+            const cardGroup = document.getElementById('card-group');
             if (!cardGroup) return;
             
             isFlipped = !isFlipped;
-            const targetRotation = isFlipped ? Math.PI : 0;
+            const targetRotation = isFlipped ? 180 : 0;
             
-            // Animate flip
-            const startRotation = cardGroup.rotation.y;
-            const startTime = Date.now();
-            const duration = 500;
-
-            function animateFlip() {
-                const elapsed = Date.now() - startTime;
-                const progress = Math.min(elapsed / duration, 1);
-                const easeProgress = 1 - Math.pow(1 - progress, 3);
-                
-                cardGroup.rotation.y = startRotation + (targetRotation - startRotation) * easeProgress;
-                
-                if (progress < 1) {
-                    requestAnimationFrame(animateFlip);
-                }
-            }
-            
-            animateFlip();
+            cardGroup.setAttribute('animation', {
+                property: 'rotation',
+                to: `0 ${targetRotation} 0`,
+                dur: 500,
+                easing: 'easeOutCubic'
+            });
         }
 
         // Event listeners
         document.getElementById('btn-flip').addEventListener('click', flipCard);
         document.getElementById('btn-back').addEventListener('click', () => {
-            if (mindarThree) {
-                mindarThree.stop();
-            }
             window.location.href = 'index.html';
         });
-
-        // Initialize on load
-        window.addEventListener('DOMContentLoaded', initMarkerAR);
     </script>
 </body>
 </html>
