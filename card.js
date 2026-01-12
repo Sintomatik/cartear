@@ -203,7 +203,8 @@ function createFrontContent() {
         interactiveObjects.push(photoMesh);
 
         // Photo border
-        const photoBorderGeometry = new THREE.RingGeometry(photoSize, photoSize + 0.08, 32);
+        const borderSize = 1.5;  // Fixed border size
+        const photoBorderGeometry = new THREE.RingGeometry(borderSize, borderSize + 0.08, 32);
         const photoBorderMaterial = new THREE.MeshBasicMaterial({ 
             color: style.primaryColor,
             side: THREE.DoubleSide
