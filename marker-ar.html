@@ -99,9 +99,9 @@
 </head>
 <body>
     <a-scene
-        mindar-image="imageTargetSrc: ./markers/target.mind; autoStart: true; uiLoading: #loading; uiScanning: no; uiError: no;"
+        mindar-image="imageTargetSrc: ./markers/target.mind; autoStart: true; uiLoading: #loading; uiScanning: no; uiError: no; filterMinCF: 0.0001; filterBeta: 0.001; maxTrack: 1; warmupTolerance: 5; missTolerance: 5;"
         color-space="sRGB"
-        renderer="colorManagement: true; antialias: true;"
+        renderer="colorManagement: true; antialias: true; physicallyCorrectLights: true;"
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
         
@@ -161,6 +161,17 @@
     <script>
         // Get config values
         const personalConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.personalInfo : {};
+        const profileConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.interactiveElements?.profilePhoto : {};
+        const skillsConfig = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.skills : [];
+        const additionalInfo = typeof CARD_CONFIG !== 'undefined' ? CARD_CONFIG.additionalInfo : {};
+
+        // Load profile image
+        let profileImage = null;
+        if (profileConfig.enabled && !profileConfig.placeholder && profileConfig.imageUrl) {
+            profileImage = new Image();
+            profileImage.crossOrigin = 'anonymous';
+            profileImage.src = profileConfig.imageUrl;
+        }
 
         // Create card canvas texture
         function createCardCanvas(side) {
@@ -170,7 +181,7 @@
             canvas.width = 800;
             canvas.height = 500;
 
-            // Background
+            // Background gradient (matching the 3D card)
             const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
             gradient.addColorStop(0, '#1a1a2e');
             gradient.addColorStop(1, '#16213e');
@@ -183,52 +194,208 @@
             ctx.strokeRect(10, 10, canvas.width - 20, canvas.height - 20);
 
             if (side === 'front') {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 48px Segoe UI, Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(personalConfig.firstName || 'FIRST', canvas.width / 2, 120);
-                ctx.fillText(personalConfig.surname || 'SURNAME', canvas.width / 2, 180);
-
-                ctx.fillStyle = '#00d4ff';
-                ctx.font = '28px Segoe UI, Arial, sans-serif';
-                ctx.fillText(personalConfig.title || 'Title', canvas.width / 2, 240);
-
-                ctx.fillStyle = '#aaaaaa';
-                ctx.font = '24px Segoe UI, Arial, sans-serif';
-                ctx.fillText(personalConfig.company || 'Company', canvas.width / 2, 280);
-
+                // Profile photo circle (left side, matching 3D card)
+                const photoX = 150;
+                const photoY = 140;
+                const photoRadius = 75;
+                
+                // Draw profile image or placeholder
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(photoX, photoY, photoRadius, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                
+                if (profileImage && profileImage.complete && profileImage.naturalWidth > 0) {
+                    // Draw loaded image
+                    ctx.drawImage(profileImage, photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
+                } else {
+                    // Placeholder background
+                    ctx.fillStyle = '#2a2a4a';
+                    ctx.fillRect(photoX - photoRadius, photoY - photoRadius, photoRadius * 2, photoRadius * 2);
+                }
+                ctx.restore();
+                
+                // Profile border (cyan ring)
+                ctx.beginPath();
+                ctx.arc(photoX, photoY, photoRadius + 4, 0, Math.PI * 2);
                 ctx.strokeStyle = '#00d4ff';
-                ctx.lineWidth = 1;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+                
+                // If placeholder, draw person icon
+                if (!profileImage || !profileImage.complete || profileImage.naturalWidth === 0) {
+                    ctx.fillStyle = '#00d4ff';
+                    ctx.font = '45px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('👤', photoX, photoY);
+                }
+
+                // Name (right side, matching 3D card layout)
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 40px Segoe UI, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText(personalConfig.firstName || 'FIRST', 530, 95);
+                ctx.fillText(personalConfig.surname || 'SURNAME', 530, 145);
+
+                // Title
+                ctx.fillStyle = '#00d4ff';
+                ctx.font = '22px Segoe UI, Arial, sans-serif';
+                ctx.fillText(personalConfig.title || 'Title', 530, 185);
+
+                // Company
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = '18px Segoe UI, Arial, sans-serif';
+                ctx.fillText(personalConfig.company || 'Company', 530, 215);
+
+                // Divider line
+                ctx.strokeStyle = '#00d4ff';
+                ctx.lineWidth = 2;
                 ctx.globalAlpha = 0.5;
                 ctx.beginPath();
-                ctx.moveTo(100, 310);
-                ctx.lineTo(700, 310);
+                ctx.moveTo(50, 265);
+                ctx.lineTo(750, 265);
                 ctx.stroke();
                 ctx.globalAlpha = 1;
 
-                ctx.fillStyle = '#cccccc';
-                ctx.font = '20px Segoe UI, Arial, sans-serif';
-                ctx.textAlign = 'left';
-                ctx.fillText('📧  ' + (personalConfig.email || 'email@example.com'), 100, 360);
-                ctx.fillText('📱  ' + (personalConfig.phone || '+1 234 567 890'), 100, 400);
-                ctx.fillText('🌐  ' + (personalConfig.website || 'www.example.com'), 100, 440);
-            } else {
-                ctx.fillStyle = '#ffffff';
-                ctx.font = 'bold 36px Segoe UI, Arial, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('CONNECT WITH ME', canvas.width / 2, 150);
-
-                ctx.fillStyle = '#00d4ff';
-                ctx.font = '60px Arial';
-                ctx.fillText('💼  🐙  🐦', canvas.width / 2, 260);
-
-                ctx.fillStyle = '#aaaaaa';
-                ctx.font = '24px Segoe UI, Arial, sans-serif';
-                ctx.fillText('📍 ' + (personalConfig.location || 'Location'), canvas.width / 2, 350);
-
-                ctx.fillStyle = '#555555';
+                // Contact info with icons (centered below divider)
+                const contactY = 305;
+                const contactSpacing = 35;
                 ctx.font = '16px Segoe UI, Arial, sans-serif';
-                ctx.fillText('Scan the marker to view this card in AR!', canvas.width / 2, 440);
+                ctx.textAlign = 'left';
+                
+                // Email
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('📧', 150, contactY);
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(personalConfig.email || 'email@example.com', 180, contactY);
+                
+                // Phone
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('📱', 150, contactY + contactSpacing);
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(personalConfig.phone || '+1 234 567 890', 180, contactY + contactSpacing);
+                
+                // Website
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('🌐', 150, contactY + contactSpacing * 2);
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(personalConfig.website || 'www.example.com', 180, contactY + contactSpacing * 2);
+                
+                // Location
+                ctx.fillStyle = '#ffffff';
+                ctx.fillText('📍', 150, contactY + contactSpacing * 3);
+                ctx.fillStyle = '#cccccc';
+                ctx.fillText(personalConfig.location || 'Location', 180, contactY + contactSpacing * 3);
+
+                // Social icons at bottom
+                const socialY = 460;
+                const socialIcons = [
+                    { symbol: 'in', color: '#0077b5' },
+                    { symbol: '⌘', color: '#333333' },
+                    { symbol: '𝕏', color: '#1da1f2' },
+                    { symbol: '◈', color: '#00d4ff' }
+                ];
+                const socialStartX = 250;
+                const socialSpacing = 110;
+                
+                socialIcons.forEach((icon, i) => {
+                    const x = socialStartX + i * socialSpacing;
+                    
+                    // Background circle
+                    ctx.beginPath();
+                    ctx.arc(x, socialY, 35, 0, Math.PI * 2);
+                    ctx.fillStyle = icon.color;
+                    ctx.globalAlpha = 0.8;
+                    ctx.fill();
+                    ctx.globalAlpha = 1;
+                    
+                    // Icon symbol
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = 'bold 28px Segoe UI, Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(icon.symbol, x, socialY);
+                });
+
+            } else {
+                // BACK SIDE - matching 3D card
+
+                // Tagline at top
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 28px Segoe UI, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                ctx.fillText(additionalInfo.tagline || 'Your Personal Tagline', canvas.width / 2, 65);
+
+                // Skills section title
+                ctx.fillStyle = '#00d4ff';
+                ctx.font = '20px Segoe UI, Arial, sans-serif';
+                ctx.fillText('Skills & Expertise', canvas.width / 2, 115);
+
+                // Skills tags in 2-column grid
+                const skills = skillsConfig.length > 0 ? skillsConfig : ['Skill 1', 'Skill 2', 'Skill 3', 'Skill 4', 'Skill 5'];
+                const skillStartY = 160;
+                const skillRowHeight = 50;
+                const skillColWidth = 280;
+                
+                skills.forEach((skill, index) => {
+                    const row = Math.floor(index / 2);
+                    const col = index % 2;
+                    const x = col === 0 ? 240 : 240 + skillColWidth;
+                    const y = skillStartY + row * skillRowHeight;
+                    
+                    // Skill tag background
+                    const tagWidth = 220;
+                    const tagHeight = 35;
+                    ctx.fillStyle = '#2a2a4a';
+                    ctx.beginPath();
+                    ctx.roundRect(x - tagWidth/2, y - tagHeight/2, tagWidth, tagHeight, 15);
+                    ctx.fill();
+                    
+                    // Skill tag border
+                    ctx.strokeStyle = '#00d4ff';
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.5;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                    
+                    // Skill text
+                    ctx.fillStyle = '#ffffff';
+                    ctx.font = '15px Segoe UI, Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(skill, x, y);
+                });
+
+                // Bio at bottom
+                ctx.fillStyle = '#aaaaaa';
+                ctx.font = '16px Segoe UI, Arial, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'alphabetic';
+                
+                // Word wrap bio text
+                const bio = additionalInfo.bio || 'A brief description about yourself.';
+                const maxWidth = 650;
+                const words = bio.split(' ');
+                let line = '';
+                let bioY = 420;
+                const lineHeight = 22;
+                
+                words.forEach((word, i) => {
+                    const testLine = line + word + ' ';
+                    const metrics = ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && i > 0) {
+                        ctx.fillText(line.trim(), canvas.width / 2, bioY);
+                        line = word + ' ';
+                        bioY += lineHeight;
+                    } else {
+                        line = testLine;
+                    }
+                });
+                ctx.fillText(line.trim(), canvas.width / 2, bioY);
             }
 
             return canvas;
@@ -243,12 +410,15 @@
             const loading = document.getElementById('loading');
             loading.style.opacity = '0';
             setTimeout(() => { loading.style.display = 'none'; }, 500);
+            
+            // Set pixel ratio for sharper rendering
+            if (scene.renderer) {
+                scene.renderer.setPixelRatio(window.devicePixelRatio);
+            }
         });
         
-        scene.addEventListener('loaded', () => {
-            console.log('Scene loaded');
-            
-            // Create and apply textures
+        // Function to create and apply card textures
+        function applyCardTextures() {
             const frontCanvas = createCardCanvas('front');
             const backCanvas = createCardCanvas('back');
             
@@ -266,7 +436,35 @@
                 if (backPlane) {
                     backPlane.setAttribute('src', '#card-back-img');
                 }
-            }, 500);
+            }, 100);
+        }
+        
+        scene.addEventListener('loaded', () => {
+            console.log('Scene loaded');
+            
+            // Wait for profile image to load before creating textures
+            if (profileImage) {
+                if (profileImage.complete && profileImage.naturalWidth > 0) {
+                    applyCardTextures();
+                } else {
+                    profileImage.onload = () => {
+                        console.log('Profile image loaded');
+                        applyCardTextures();
+                    };
+                    profileImage.onerror = () => {
+                        console.log('Profile image failed to load, using placeholder');
+                        applyCardTextures();
+                    };
+                    // Fallback if image takes too long
+                    setTimeout(() => {
+                        if (!document.getElementById('card-front-img').src) {
+                            applyCardTextures();
+                        }
+                    }, 2000);
+                }
+            } else {
+                applyCardTextures();
+            }
             
             // Fallback: hide loading after 3 seconds anyway
             setTimeout(() => {
