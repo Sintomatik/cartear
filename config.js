@@ -31,7 +31,7 @@ const CARD_CONFIG = {
         linkedin: "#",
         github: "#",
         twitter: "#",
-        portfolio: "https://darymura.com",
+        portfolio: "https://darymura.net",
     },
 
     // ==========================================
@@ -63,24 +63,8 @@ const CARD_CONFIG = {
         profilePhoto: {
             enabled: true,
             placeholder: true,  // Set to false when you add real image
-            imageUrl: "",       // Add your image URL here
+            imageUrl: "./img/logo.png",       // Add your image URL here
             size: 1.5,
-        },
-        
-        // QR Code placeholder
-        qrCode: {
-            enabled: true,
-            placeholder: true,
-            imageUrl: "",       // Add your QR code image URL
-            size: 1.2,
-        },
-        
-        // Logo placeholder
-        logo: {
-            enabled: true,
-            placeholder: true,
-            imageUrl: "",       // Add your company logo URL
-            size: 1.0,
         },
 
         // 3D decorative elements
@@ -89,6 +73,15 @@ const CARD_CONFIG = {
             floatingIcons: true,
             glowEffects: true,
         }
+    },
+
+    // ==========================================
+    // MARKER AR SETTINGS (MindAR)
+    // ==========================================
+    markerAR: {
+        enabled: true,
+        markerFile: "./markers/target.mind",  // Path to your .mind marker file
+        // Create marker at: https://hiukim.github.io/mind-ar-js-doc/tools/compile
     },
 
     // ==========================================
