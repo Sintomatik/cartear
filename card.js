@@ -210,7 +210,7 @@ function createFrontContent() {
             side: THREE.DoubleSide
         });
         const photoBorder = new THREE.Mesh(photoBorderGeometry, photoBorderMaterial);
-        photoBorder.position.copy(photoMesh.position);
+        photoBorder.position.set(photoMesh.position.x, photoMesh.position.y, 0.02);
         frontGroup.add(photoBorder);
     }
 
@@ -273,7 +273,7 @@ function createFrontContent() {
     contactItems.forEach(item => {
         const iconMesh = createTextMesh(item.icon, { fontSize: 24 });
         iconMesh.position.set(-3.2, item.y, 0.01);
-        iconMesh.scale.set(0.22, 0.85, 1);
+        iconMesh.scale.set(0.6, 0.6, 1);
         frontGroup.add(iconMesh);
 
         const textMesh = createTextMesh(item.text, { 
