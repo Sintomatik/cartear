@@ -4,8 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, minimum-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AR Business Card - Marker Mode</title>
-    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
     <style>
         * {
             margin: 0;
@@ -96,6 +94,65 @@
             margin-bottom: 10px;
         }
     </style>
+    <script src="https://aframe.io/releases/1.4.2/aframe.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-image-aframe.prod.js"></script>
+    <script>
+        // Custom component to handle video texture
+        AFRAME.registerComponent('video-material', {
+            schema: {
+                src: {type: 'string'},
+                opacity: {type: 'number', default: 0.9}
+            },
+            init: function() {
+                const el = this.el;
+                const data = this.data;
+                
+                // Create video element
+                const video = document.createElement('video');
+                video.src = data.src;
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.crossOrigin = 'anonymous';
+                video.autoplay = true;
+                
+                // Create Three.js video texture
+                video.addEventListener('loadeddata', () => {
+                    console.log('Video loaded, creating texture');
+                    const texture = new THREE.VideoTexture(video);
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+                    texture.format = THREE.RGBAFormat;
+                    
+                    // Apply material
+                    const mesh = el.getObject3D('mesh');
+                    if (mesh) {
+                        mesh.material = new THREE.MeshBasicMaterial({
+                            map: texture,
+                            transparent: true,
+                            opacity: data.opacity,
+                            side: THREE.DoubleSide
+                        });
+                    }
+                    
+                    video.play().catch(e => console.warn('Video play failed:', e));
+                });
+                
+                video.load();
+                this.video = video;
+            },
+            play: function() {
+                if (this.video) {
+                    this.video.play().catch(e => console.warn('Video play failed:', e));
+                }
+            },
+            pause: function() {
+                if (this.video) {
+                    this.video.pause();
+                }
+            }
+        });
+    </script>
 </head>
 <body>
     <a-scene
@@ -105,22 +162,21 @@
         vr-mode-ui="enabled: false"
         device-orientation-permission-ui="enabled: false">
         
-        <a-assets>
+        <a-assets timeout="10000">
             <img id="card-front-img" crossorigin="anonymous">
             <img id="card-back-img" crossorigin="anonymous">
-            <video id="bg-video" autoplay loop muted playsinline crossorigin="anonymous" preload="auto"></video>
         </a-assets>
         
         <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
         
         <a-entity mindar-image-target="targetIndex: 0" id="card-target">
             <!-- Video background behind card -->
-            <a-entity id="video-bg-entity" position="0 0 -0.3" visible="false">
+            <a-entity id="video-bg-entity" position="0 0 -0.15" visible="false">
                 <a-plane 
                     id="video-bg-plane"
-                    width="3"
-                    height="2"
-                    material="shader: flat; side: double; transparent: true; opacity: 0.8;">
+                    width="1.2"
+                    height="0.8"
+                    video-material="src: ./media/sky.mp4; opacity: 0.9">
                 </a-plane>
             </a-entity>
             
@@ -264,57 +320,25 @@
             isAudioPlaying = false;
         }
 
-        // Setup video background with faded edges
+        // Setup video background
         function setupVideoBackground() {
-            if (!arMediaConfig.video || !arMediaConfig.video.enabled) return;
-            
-            const videoEl = document.getElementById('bg-video');
-            if (videoEl && arMediaConfig.video.src) {
-                videoEl.src = arMediaConfig.video.src;
-                videoEl.load(); // Preload video
-                
-                // Update video plane size from config
-                const videoPlane = document.getElementById('video-bg-plane');
-                if (videoPlane) {
-                    const width = (arMediaConfig.video.width || 2.5) * 1.5;
-                    const height = (arMediaConfig.video.height || 1.5) * 1.5;
-                    videoPlane.setAttribute('width', width);
-                    videoPlane.setAttribute('height', height);
-                    videoPlane.setAttribute('material', `shader: flat; side: double; transparent: true; opacity: ${arMediaConfig.video.opacity || 0.8}; src: #bg-video`);
-                }
-                
-                console.log('Video background setup complete');
-            }
+            console.log('Video background will be initialized by custom component');
         }
 
-        // Apply video texture with faded edges
+        // Show video background
         function applyVideoTexture() {
             if (!arMediaConfig.video || !arMediaConfig.video.enabled) return;
             
-            const videoEl = document.getElementById('bg-video');
-            const videoPlane = document.getElementById('video-bg-plane');
             const videoBgEntity = document.getElementById('video-bg-entity');
+            const videoPlane = document.getElementById('video-bg-plane');
             
-            if (videoEl && videoPlane && videoBgEntity) {
-                console.log('Applying video texture...');
-                
-                // Apply video as texture
-                videoPlane.setAttribute('material', 'src', '#bg-video');
-                
-                // Make visible
+            if (videoBgEntity) {
+                console.log('Showing video background...');
                 videoBgEntity.setAttribute('visible', 'true');
                 
-                // Start video playback
-                if (videoEl.readyState >= 2) {
-                    videoEl.play().then(() => {
-                        console.log('Video playing');
-                    }).catch(e => console.warn('Video autoplay failed:', e));
-                } else {
-                    videoEl.addEventListener('canplay', () => {
-                        videoEl.play().then(() => {
-                            console.log('Video playing after canplay');
-                        }).catch(e => console.warn('Video autoplay failed:', e));
-                    }, { once: true });
+                // Trigger video play
+                if (videoPlane && videoPlane.components['video-material']) {
+                    videoPlane.components['video-material'].play();
                 }
             }
         }
